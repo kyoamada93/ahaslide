@@ -272,7 +272,8 @@ function lanIp() {
   return 'localhost';
 }
 function joinUrl(req) {
-  const fixed = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+  const fixed = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL
+    || (process.env.RAILWAY_PUBLIC_DOMAIN && `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
   if (fixed) return fixed.replace(/\/$/, '');
   const host = req.get('host') || '';
   if (host && !/^(localhost|127\.|\[::1\])/.test(host)) {

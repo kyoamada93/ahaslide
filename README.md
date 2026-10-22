@@ -28,6 +28,17 @@ App là 1 server Node.js giữ kết nối realtime (WebSocket), nên cần mộ
 
 **Gói nên dùng:** `render.yaml` để gói **Starter** (0.5 CPU, 512 MB) + ổ đĩa 1 GB để dữ liệu và logo/ảnh nền đã upload không mất khi restart. Với 300 người, CPU đo được trung bình 5–14% và đỉnh ~48% của 1 core (xem *Kiểm thử tải* bên dưới) → vừa với 0.5 CPU. Gói **Free** (0.1 CPU, không có ổ đĩa, tự ngủ sau 15 phút không có request) chỉ nên dùng để thử; nếu dùng Free thì xoá phần `disk` trong `render.yaml`, đổi `plan: free`, và mở `/screen` trước giờ G vài phút để server "thức dậy".
 
+### Host miễn phí cho 1 lần sự kiện
+
+| Lựa chọn | Chi phí | Cấu hình | Ghi chú |
+|---|---|---|---|
+| **Railway – gói dùng thử** (khuyên dùng) | $5 credit tặng 1 lần, hết hạn sau 30 ngày | 1 GB RAM, vCPU dùng chung | Đủ cho cả ngày sự kiện. **Đăng ký trong vòng 30 ngày trước sự kiện.** New Project → Deploy from GitHub repo → chọn repo + branch (Railway tự dùng `Dockerfile`) → Settings → Networking → *Generate Domain* → thêm biến `ADMIN_KEY`. |
+| **Render – gói Free** | 0đ | 0.1 CPU, 512 MB, Singapore | Đổi `plan: free` và xoá phần `disk` trong `render.yaml`. CPU yếu: 300 người có thể hơi trễ lúc đông nhất. Ngủ sau 15 phút không có request → mở `/screen` trước giờ G. |
+| **Koyeb – gói Free** | 0đ | 0.1 vCPU, 512 MB, chỉ Frankfurt/Washington | Xa Việt Nam (trễ hơn), CPU yếu như Render Free. |
+| **Laptop trình chiếu + Cloudflare Tunnel** | 0đ | CPU của laptop (mạnh nhất) | `npm start` rồi `cloudflared tunnel --url http://localhost:3000`, đặt `PUBLIC_URL` = URL tunnel. Laptop phải luôn bật, không sleep, mạng ổn định. |
+
+Dù chọn nơi nào, nên chạy thử tải trước 1 ngày: `node scripts/load-test.js 300 https://<app> <ADMIN_KEY>` rồi vào admin **Reset**. Lưu ý các gói free không giữ file khi restart: hãy upload logo/ảnh nền **sau** lần deploy cuối, và xuất CSV ngay sau chương trình.
+
 Cách khác: bất kỳ dịch vụ nào chạy được Docker (Railway, Fly.io, VM nội bộ…) bằng `Dockerfile` có sẵn — chạy **đúng 1 instance**, đặt `PUBLIC_URL` = địa chỉ công khai, `DATA_DIR` trỏ vào ổ đĩa bền vững.
 
 ## Chạy trên máy (tuỳ chọn)
