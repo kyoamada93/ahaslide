@@ -7,6 +7,7 @@
   let uid = null;
   try { uid = localStorage.getItem(LS_KEY); } catch {}
   let lastSig = '';
+  let qaSort = 'top'; // 'top' | 'new'
   const fb = { overall: 0, content: 0, organization: 0 };
 
   document.addEventListener('visibilitychange', () => { if (!document.hidden && !socket.connected) socket.connect(); });
@@ -14,7 +15,8 @@
     if (uid) socket.emit('hello', uid, (res) => { if (!res?.ok) { uid = null; ME = { user: null }; render(true); } });
     else { ME = { user: null }; render(true); }
   });
-  socket.on('state', (s) => { if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; render(); });
+  socket.on('state', (s) => { if (s.poll) s.poll.localEnd = s.poll.endsIn ? Date.now() + s.poll.endsIn : 0;
+    if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; render(); });
   socket.on('me', (m) => { ME = m; render(); });
   socket.on('reset', () => { try { localStorage.removeItem(LS_KEY); } catch {} location.reload(); });
 
@@ -24,9 +26,9 @@
     const base = [sl.id, !!ME?.user, ME?.user?.name];
     switch (sl.type) {
       case 'wordcloud': return JSON.stringify([base, ME?.words?.[sl.id]]);
-      case 'poll': return JSON.stringify([base, ME?.votes?.[sl.id], S.poll]);
+      case 'poll': { const p = S.poll; return JSON.stringify([base, ME?.votes?.[sl.id], p.counts, p.total, p.open, p.hidden, !!p.endsIn]); }
       case 'speaker': return JSON.stringify([base, ME?.questions]);
-      case 'qa': return JSON.stringify([base, S.questions, ME?.upvoted, ME?.questions]);
+      case 'qa': return JSON.stringify([base, S.questions, ME?.upvoted, ME?.questions, qaSort]);
       case 'race': return JSON.stringify([base, S.race.phase, S.race.finishOrder, ME?.duck]);
       case 'feedback': return JSON.stringify([base, ME?.feedbackDone]);
       default: return JSON.stringify(base);
@@ -120,16 +122,17 @@
       const voted = my !== null && my !== undefined;
       return `
       <div class="card glass">
-        <div class="kick">Vote · ${p.total} phiếu ${p.open ? '' : '· 🔒 Đã đóng'}</div>
+        <div class="kick">Vote · ${p.total} phiếu ${p.open ? '' : '· 🔒 Đã đóng'} <span id="pTimer" class="p-timer"></span></div>
         <h2>${esc(sl.title)}</h2>
         <p class="muted">${esc(sl.subtitle || '')}</p>
         <div class="opts">${sl.options.map((o, i) => {
-          const pc = p.total ? Math.round((p.counts[i] / p.total) * 100) : 0;
+          const showPc = voted && p.counts; // results may be hidden until the presenter reveals them
+          const pc = showPc && p.total ? Math.round((p.counts[i] / p.total) * 100) : 0;
           return `<button class="opt ${my === i ? 'sel' : ''}" data-act="vote" data-i="${i}" ${p.open ? '' : 'disabled'}>
-            ${voted ? `<span class="fill" style="width:${pc}%"></span>` : ''}
-            <span class="n">${i + 1}</span><span class="tx">${esc(o)}</span>${voted ? `<span class="pc">${pc}% · ${p.counts[i]} phiếu</span>` : ''}</button>`;
+            ${showPc ? `<span class="fill" style="width:${pc}%"></span>` : ''}
+            <span class="n">${i + 1}</span><span class="tx">${esc(o)}</span>${showPc ? `<span class="pc">${pc}% · ${p.counts[i]} phiếu</span>` : ''}</button>`;
         }).join('')}</div>
-        ${voted ? '<p class="muted" style="margin-top:12px;font-size:14px">✅ Đã ghi nhận. Bạn có thể đổi lựa chọn khi vote còn mở.</p>' : ''}
+        ${voted ? `<p class="muted" style="margin-top:12px;font-size:14px">✅ Đã ghi nhận. ${p.open ? 'Bạn có thể đổi lựa chọn khi vote còn mở.' : ''}${p.counts ? '' : ' Kết quả sẽ được công bố trên màn hình chính.'}</p>` : ''}
       </div>`;
     },
 
@@ -145,12 +148,13 @@
 
     qa: (sl) => {
       const up = new Set(ME.upvoted || []);
-      const list = S.questions;
+      const list = qaSort === 'new' ? [...S.questions].sort((a, b) => b.createdAt - a.createdAt) : S.questions;
       return `
       ${askBox(null)}
       <div class="card glass">
         <div class="kick">Câu hỏi đã duyệt · ${list.length}</div>
         <h2>Upvote câu hỏi bạn quan tâm</h2>
+        <div class="seg"><button data-act="qa-sort" data-s="top" class="${qaSort === 'top' ? 'on' : ''}">🔥 Top</button><button data-act="qa-sort" data-s="new" class="${qaSort === 'new' ? 'on' : ''}">🕒 Mới nhất</button></div>
         ${list.length ? list.map((q) => `
           <div class="qitem"><div><div class="t">${q.highlighted ? '🎤 ' : ''}${esc(q.text)}</div><div class="by">${q.target ? '→ ' + esc(q.target) : 'Ẩn danh'}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div>
             <button class="up ${up.has(q.id) ? 'on' : ''}" data-act="upvote" data-id="${q.id}" ${q.status === 'answered' ? 'disabled' : ''}>▲ ${q.upvotes}</button></div>`).join('') : '<p class="muted">Chưa có câu hỏi nào được duyệt.</p>'}
@@ -176,7 +180,10 @@
           <button class="btn block" data-act="race-join">Tham gia đua 🦆</button></div>`;
       }
       return `<div class="card glass center"><div class="kick">Bạn đã vào đường đua</div><canvas class="duck-pre" id="duckPre" width="320" height="220"></canvas>
-        <h2>Vịt số ${duck.no || ''} của bạn đã sẵn sàng!</h2><p class="muted">Chờ presenter bấm bắt đầu<span class="wait-dots"></span><br>Chuẩn bị ngón tay nhé 👆</p></div>`;
+        <h2>Vịt số ${duck.no || ''} của bạn đã sẵn sàng!</h2>
+        <p class="muted" style="margin-top:10px">Chọn màu cho vịt của bạn:</p>
+        <div class="swatches">${(duck.colors || []).map((c) => `<button data-act="duck-color" data-c="${c}" class="${c === duck.color ? 'on' : ''}" style="background:${c}" aria-label="màu ${c}"></button>`).join('')}</div>
+        <p class="muted">Chờ presenter bấm bắt đầu<span class="wait-dots"></span><br>Chuẩn bị ngón tay nhé 👆</p></div>`;
     },
 
     feedback: () => {
@@ -254,6 +261,12 @@
       case 'race-join':
         res = await emit('race:join');
         break;
+      case 'duck-color':
+        res = await emit('race:color', el.dataset.c);
+        break;
+      case 'qa-sort':
+        qaSort = el.dataset.s;
+        return render(true);
       case 'star':
         fb[el.dataset.k] = Number(el.dataset.n);
         el.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('on', Number(x.dataset.n) <= fb[el.dataset.k]));
@@ -266,6 +279,15 @@
     }
     if (res && !res.ok && res.error) toast(res.error);
   }
+
+  // Poll auto-close countdown (updated in place, no re-render).
+  setInterval(() => {
+    const el = document.getElementById('pTimer');
+    if (!el || S?.slide.type !== 'poll') return;
+    const left = S.poll.open && S.poll.localEnd ? Math.max(0, Math.ceil((S.poll.localEnd - Date.now()) / 1000)) : 0;
+    el.textContent = left ? `· ⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '';
+    el.classList.toggle('urgent', left > 0 && left <= 10);
+  }, 250);
 
   // ---------------------------------------------------------------- race tap zone
   let zone = null;

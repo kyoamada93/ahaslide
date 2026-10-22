@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
+const { hasProfanity } = require('./profanity');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
@@ -27,6 +28,7 @@ const CONFIG_FILE = process.env.CONFIG_FILE || path.join(__dirname, 'config.json
 const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
 const slides = config.slides;
 const slideById = Object.fromEntries(slides.map((s) => [s.id, s]));
+const PROFANITY_FILTER = config.profanityFilter !== false;
 
 const DUCK_COLORS = [
   '#FFD43B', '#FF6FB5', '#4DD0E1', '#9CCC65', '#FFA94D', '#B197FC',
@@ -42,6 +44,8 @@ function freshState() {
     hiddenWords: {}, // slideId -> [normalized]
     votes: {}, // slideId -> {userId: optionIndex}
     pollOpen: {}, // slideId -> bool
+    pollHidden: {}, // slideId -> bool: results hidden until the presenter reveals them
+    pollEndsAt: {}, // slideId -> ms timestamp when voting auto-closes
     questions: [], // {id,userId,name,text,target,status,highlighted,upvotes[],createdAt}
     race: freshRace(),
     raceHistory: [],
@@ -102,17 +106,29 @@ function wordFreq(slideId) {
     .slice(0, 150);
 }
 
-function pollResults(slideId) {
+function pollHidden(slideId) {
+  return state.pollHidden[slideId] ?? !!slideById[slideId]?.hideResults;
+}
+// full = admin view; otherwise counts are withheld while results are hidden.
+function pollResults(slideId, full = false) {
   const slide = slideById[slideId];
   const counts = slide.options.map(() => 0);
   for (const idx of Object.values(state.votes[slideId] || {})) if (counts[idx] !== undefined) counts[idx] += 1;
-  return { counts, total: counts.reduce((a, b) => a + b, 0), open: state.pollOpen[slideId] !== false };
+  const hidden = pollHidden(slideId);
+  const endsAt = state.pollEndsAt[slideId] || 0;
+  return {
+    counts: hidden && !full ? null : counts,
+    total: counts.reduce((a, b) => a + b, 0),
+    open: state.pollOpen[slideId] !== false,
+    hidden,
+    endsIn: endsAt && state.pollOpen[slideId] !== false ? Math.max(0, endsAt - Date.now()) : 0,
+  };
 }
 
 function publicQuestion(q) {
   return {
     id: q.id, name: q.name, text: q.text, target: q.target, status: q.status,
-    highlighted: q.highlighted, upvotes: q.upvotes.length, createdAt: q.createdAt,
+    highlighted: q.highlighted, upvotes: q.upvotes.length, createdAt: q.createdAt, flagged: !!q.flagged,
   };
 }
 
@@ -185,7 +201,7 @@ function adminState() {
     questions: state.questions.map(publicQuestion),
     words: Object.fromEntries(slides.filter((s) => s.type === 'wordcloud').map((s) => [s.id, wordFreq(s.id)])),
     hiddenWords: state.hiddenWords,
-    polls: Object.fromEntries(slides.filter((s) => s.type === 'poll').map((s) => [s.id, pollResults(s.id)])),
+    polls: Object.fromEntries(slides.filter((s) => s.type === 'poll').map((s) => [s.id, pollResults(s.id, true)])),
     race: raceView(),
     raceHistory: state.raceHistory,
     feedback: feedbackSummary(),
@@ -207,7 +223,7 @@ function myState(userId) {
     if (q.userId === userId) mine.questions.push({ id: q.id, text: q.text, status: q.status });
   }
   const p = state.race.players[userId];
-  mine.duck = p ? { color: p.color, no: p.no, rank: p.rank || null } : null;
+  mine.duck = p ? { color: p.color, no: p.no, rank: p.rank || null, colors: DUCK_COLORS } : null;
   return mine;
 }
 
@@ -324,7 +340,7 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
     case 'votes': {
       const rows = [];
       for (const s of slides.filter((x) => x.type === 'poll')) {
-        const r = pollResults(s.id);
+        const r = pollResults(s.id, true);
         s.options.forEach((o, i) => rows.push([s.id, o, r.counts[i]]));
       }
       return sendCsv(res, 'votes', ['slide', 'option', 'votes'], rows);
@@ -544,6 +560,7 @@ io.on('connection', (socket) => {
     const list = (m[userId] ||= []);
     if (list.length >= (slide.maxPerUser || 3)) return ack(cb, { ok: false, error: `Tối đa ${slide.maxPerUser || 3} từ khoá` });
     if (list.some((x) => normWord(x) === normWord(w))) return ack(cb, { ok: false, error: 'Bạn đã gửi từ này rồi' });
+    if (PROFANITY_FILTER && hasProfanity(w)) return ack(cb, { ok: false, error: 'Từ khoá chưa phù hợp, bạn thử từ khác nhé 🙏' });
     list.push(w);
     ack(cb, { ok: true });
     pushMe(userId);
@@ -570,7 +587,8 @@ io.on('connection', (socket) => {
     }
     state.questions.push({
       // Q&A is always anonymous: the asker's name is never stored with the question.
-      id: newId(), userId, name: 'Ẩn danh', text: t,
+      // Questions with profanity stay pending and are flagged for the moderator.
+      id: newId(), userId, name: 'Ẩn danh', text: t, flagged: PROFANITY_FILTER && hasProfanity(t),
       target: config.qaTargets.includes(target) ? target : config.qaTargets[0],
       status: 'pending', highlighted: false, upvotes: [], createdAt: Date.now(),
     });
@@ -602,6 +620,15 @@ io.on('connection', (socket) => {
     pushMe(userId);
     emitRaceFrame();
     broadcast();
+  });
+
+  socket.on('race:color', (color, cb) => {
+    const p = userId && state.race.players[userId];
+    if (!p || state.race.phase !== 'lobby' || !DUCK_COLORS.includes(color)) return ack(cb, { ok: false });
+    p.color = color;
+    ack(cb, { ok: true });
+    pushMe(userId);
+    emitRaceFrame();
   });
 
   socket.on('race:tap', (n) => {
@@ -661,8 +688,22 @@ io.on('connection', (socket) => {
         state.hiddenWords[a.slideId] = (state.hiddenWords[a.slideId] || []).filter((k) => k !== a.key);
         break;
       case 'words:reset': delete state.words[a.slideId]; delete state.hiddenWords[a.slideId]; pushAllMe(); break;
-      case 'poll:toggle': state.pollOpen[a.slideId] = state.pollOpen[a.slideId] === false; break;
-      case 'poll:reset': delete state.votes[a.slideId]; state.pollOpen[a.slideId] = true; pushAllMe(); break;
+      case 'poll:toggle':
+        state.pollOpen[a.slideId] = state.pollOpen[a.slideId] === false;
+        delete state.pollEndsAt[a.slideId];
+        break;
+      case 'poll:reveal': state.pollHidden[a.slideId] = !pollHidden(a.slideId); break;
+      case 'poll:timer': {
+        const sec = Number(a.seconds);
+        if (!slideById[a.slideId] || !(sec >= 5 && sec <= 1200)) return ack(cb, { ok: false, error: 'Thời gian 5s–20 phút' });
+        state.pollOpen[a.slideId] = true;
+        state.pollEndsAt[a.slideId] = Date.now() + sec * 1000;
+        break;
+      }
+      case 'poll:reset':
+        delete state.votes[a.slideId]; delete state.pollEndsAt[a.slideId]; state.pollOpen[a.slideId] = true;
+        pushAllMe();
+        break;
       case 'race:start':
         if (!startRace()) return ack(cb, { ok: false, error: 'Chưa có người chơi hoặc đua đang diễn ra' });
         break;
@@ -687,11 +728,23 @@ io.on('connection', (socket) => {
         return ack(cb, { ok: false, error: 'unknown action' });
     }
     ack(cb, { ok: true });
-    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'qa:highlight'].includes(a.type));
+    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));
 });
+
+// Auto-close polls whose timer ran out.
+setInterval(() => {
+  const now = Date.now();
+  for (const [sid, endsAt] of Object.entries(state.pollEndsAt)) {
+    if (endsAt && now >= endsAt) {
+      state.pollOpen[sid] = false;
+      delete state.pollEndsAt[sid];
+      broadcast(true);
+    }
+  }
+}, 250);
 
 // Keep admin "online" counter fresh.
 setInterval(() => io.to('admin').emit('admin', adminState()), 5000);

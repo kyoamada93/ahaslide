@@ -5,12 +5,12 @@
 | # | Slide | Khán giả (điện thoại) | Màn hình chiếu |
 |---|-------|-----------------------|----------------|
 | 1 | **Check-in** | Quét QR → nhập tên, team | QR lớn, số người check-in, tên hiện realtime |
-| 2 | **Word cloud** "Bạn mong muốn gì ở Townhall?" | Nhập tối đa 3 từ khoá | Word cloud cập nhật trực tiếp |
-| 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic (đổi được đến khi đóng vote) | Biểu đồ cột realtime, topic dẫn đầu màu vàng |
+| 2 | **Word cloud** "Bạn mong muốn gì ở Townhall?" | Nhập tối đa 3 từ khoá (lọc từ tục tiếng Việt/Anh) | Word cloud cập nhật trực tiếp |
+| 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic (đổi được đến khi đóng vote) | Biểu đồ cột realtime; có thể **ẩn kết quả đến khi công bố** và **hẹn giờ tự đóng vote** |
 | 4 | **Sharing — Anh Dũng** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
 | 5 | **Sharing — Chị Yên** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
 | 6 | **Q&A realtime** (luôn **ẩn danh**) | Gửi câu hỏi, upvote câu đã duyệt | Chỉ hiện câu hỏi **moderator đã Approve**; câu Highlight hiện to |
-| 7 | **Đua vịt** | Bấm "Tham gia đua", tap liên tục để vịt tăng tốc (thanh tốc độ, BOOST, vị trí realtime) | Dòng sông dài, camera bám theo vịt dẫn đầu, đèn xuất phát, bảng dẫn đầu, mini-map, podium + pháo giấy |
+| 7 | **Đua vịt** | Bấm "Tham gia đua", **chọn màu vịt**, tap liên tục để vịt tăng tốc (thanh tốc độ, BOOST, vị trí realtime) | Dòng sông dài, camera bám theo vịt dẫn đầu, đèn xuất phát, bảng dẫn đầu, mini-map, podium + pháo giấy |
 | 8 | **Đánh giá & góp ý** | Chấm sao + góp ý cho kỳ sau | Số lượt đánh giá, điểm trung bình |
 
 ## Chạy online — không cần máy local (Render)
@@ -76,6 +76,19 @@ Nếu mở `/screen` qua tên miền công khai thì QR tự lấy tên miền �
 | `PUBLIC_URL` | tự phát hiện (trên Render dùng `RENDER_EXTERNAL_URL`) | URL khán giả dùng (mã hoá trong QR) |
 | `DATA_DIR` | `./data` | Nơi lưu `state.json` (tự lưu mỗi giây, khởi động lại không mất dữ liệu) |
 | `CONFIG_FILE` | `./config.json` | File cấu hình chương trình |
+
+## So với AhaSlides
+
+Đã đối chiếu với tài liệu AhaSlides (Word Cloud, Poll, Q&A, Duck Race, cách mời khán giả):
+
+| Tính năng AhaSlides | Ở đây |
+|---|---|
+| Word cloud: giới hạn số từ / người, lọc từ tục, xoá từ trên màn hình | ✅ `maxPerUser`, bộ lọc tiếng Việt + Anh (`profanityFilter`), admin ẩn/hiện từng từ |
+| Poll: đóng/mở vote, *Show results manually*, giới hạn thời gian | ✅ Đóng/mở, 🙈 ẩn kết quả đến khi công bố (`hideResults`), hẹn giờ 30s–5 phút tự đóng |
+| Q&A: duyệt (Pending → Approve/Dismiss), moderator dùng máy riêng, upvote, ẩn danh, sắp xếp Top/Mới nhất/Đã trả lời, đánh dấu câu nổi bật | ✅ Đủ; câu có từ tục được gắn ⚠️ cho moderator; luôn ẩn danh |
+| Duck race: ai vào là có vịt, đổi kiểu vịt trước khi bắt đầu, công bố người thắng trên màn hình + điện thoại; tối đa 40 vịt | ✅ Chọn màu vịt; tap để đua (thay vì ngẫu nhiên); đã thử 300 vịt |
+| Presenter-paced: điện thoại đi theo slide của presenter, vào lại không mất câu trả lời | ✅ Đồng bộ < 25 ms; tự kết nối lại; thanh "Slide x/8" trên điện thoại |
+| Màn hình chiếu luôn sáng | ✅ Screen Wake Lock (cần https — có sẵn khi deploy) |
 
 ## Tuỳ chỉnh nội dung
 

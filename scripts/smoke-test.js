@@ -55,6 +55,7 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     const words = ['AI', 'ai', 'Networking', 'LLM', 'Agent', 'Data'];
     for (const [i, s] of users.entries()) await call(s, 'word:add', { slideId: 'wish', word: words[i % words.length] });
     assert.equal((await call(users[0], 'word:add', { slideId: 'wish', word: 'AI' })).ok, false, 'dup rejected');
+    assert.equal((await call(users[1], 'word:add', { slideId: 'wish', word: 'vãi l' })).ok, false, 'profanity rejected');
     await wait(300);
     const ai = pub.words.find((w) => w.key === 'ai');
     assert.equal(ai.count, 9, 'case-insensitive merge');
@@ -69,8 +70,27 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     await call(users[1], 'poll:vote', { slideId: 'topic-vote', option: 2 }); // change vote
     await wait(300);
     assert.equal(pub.poll.total, 25, 'one vote per user');
-    await act({ type: 'poll:toggle', slideId: 'topic-vote' });
+    // hide results: screen + phones get no counts, admin still does
+    const phone = await connect();
+    await call(phone, 'hello', users[3].uid);
+    let phoneState = null; phone.on('state', (st) => { phoneState = st; });
+    await act({ type: 'poll:reveal', slideId: 'topic-vote' });
+    assert.equal(pub.poll.hidden, true);
+    assert.equal(pub.poll.counts, null, 'screen counts hidden');
+    assert.equal(phoneState.poll.counts, null, 'phone counts hidden');
+    assert.equal(adm.polls['topic-vote'].counts.reduce((a, b) => a + b, 0), 25, 'admin sees counts');
+    await act({ type: 'poll:reveal', slideId: 'topic-vote' });
+    assert.ok(Array.isArray(pub.poll.counts), 'revealed');
+    // timer auto-closes voting
+    await act({ type: 'poll:timer', slideId: 'topic-vote', seconds: 5 });
+    assert.ok(pub.poll.endsIn > 3000 && pub.poll.open, 'timer running');
+    await wait(5600);
+    assert.equal(pub.poll.open, false, 'timer closed poll');
     assert.equal((await call(users[2], 'poll:vote', { slideId: 'topic-vote', option: 0 })).ok, false, 'closed poll');
+    await act({ type: 'poll:toggle', slideId: 'topic-vote' });
+    assert.equal(pub.poll.open, true, 'reopened');
+    await act({ type: 'poll:toggle', slideId: 'topic-vote' });
+    phone.close();
 
     // 4-5. Speakers
     await act({ type: 'next' }); assert.equal(pub.slide.speaker, 'Anh Dũng');
@@ -79,9 +99,12 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     // 6. Q&A with moderation
     await act({ type: 'next' }); assert.equal(pub.slide.type, 'qa');
     for (let i = 0; i < 5; i++) assert.ok((await call(users[i], 'qa:ask', { text: `Question number ${i}?`, target: 'Chị Yên', anonymous: i === 0 })).ok);
+    assert.ok((await call(users[6], 'qa:ask', { text: 'câu này vcl thật' })).ok, 'profane question accepted but held');
     await wait(300);
     assert.equal(pub.questions.length, 0, 'pending questions are not public');
-    assert.equal(adm.questions.length, 5);
+    assert.equal(adm.questions.length, 6);
+    assert.ok(adm.questions.find((q) => q.text.includes('vcl')).flagged, 'profane question flagged');
+    assert.ok(!adm.questions.find((q) => q.text.startsWith('Question number 1')).flagged, 'clean question not flagged');
     const [q0, q1, q2] = adm.questions;
     await act({ type: 'qa:status', qid: q0.id, status: 'approved' });
     await act({ type: 'qa:status', qid: q1.id, status: 'approved' });
@@ -98,6 +121,8 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     // 7. Duck race
     await act({ type: 'next' }); assert.equal(pub.slide.type, 'race');
     for (const s of users.slice(0, 10)) assert.ok((await call(s, 'race:join')).ok);
+    assert.ok((await call(users[0], 'race:color', '#FF6FB5')).ok, 'pick duck colour');
+    assert.equal((await call(users[0], 'race:color', 'red; x')).ok, false, 'only palette colours');
     await act({ type: 'race:start' });
     assert.equal(pub.race.phase, 'countdown');
     await wait(3700);

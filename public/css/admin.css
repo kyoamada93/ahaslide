@@ -45,3 +45,5 @@ body.admin { overflow: auto; }
 .brand .slot b { font-size: 13px; display: block; margin-bottom: 4px; }
 .brand .slot label { display: inline-block; margin: 0; cursor: pointer; }
 .brand .slot input[type=file] { display: none; }
+.qa-item.flag { border-color: #ff6b6b; }
+.flag-note { font-size: 12px; font-weight: 700; color: #ffa8a8; margin-bottom: 6px; }

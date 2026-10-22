@@ -8,6 +8,15 @@
   let join = { url: '', svg: '' };
 
   particles($('#fx'), 50);
+
+  // Keep the projector laptop from dimming or sleeping mid-event (needs https or localhost).
+  let wakeLock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch {}
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAwake(); });
+  addEventListener('click', keepAwake);
   socket.on('connect', () => {
     socket.emit('screen:join');
     if (adminKey) socket.emit('admin:auth', adminKey, () => {});
@@ -26,6 +35,7 @@
   else $('#hint').textContent = 'F: toàn màn hình · ← → / clicker: chuyển slide';
 
   socket.on('state', (s) => { if (!s.slides) return; // ignore the slim phone state sent before screen:join
+    if (s.poll) s.poll.localEnd = s.poll.endsIn ? Date.now() + s.poll.endsIn : 0;
     if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; update(); });
   socket.on('reset', () => location.reload());
 
@@ -70,7 +80,7 @@
       lastCloudKey = '';
     },
     poll(el, sl) {
-      el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p></div><div class="poll-status" id="pollStatus"></div></div>
+      el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p><div class="poll-status" id="pollStatus"></div>
         <div class="poll-box glass" id="poll">${sl.options.map((o, i) => `
           <div class="opt" data-i="${i}"><div class="num">${i + 1}</div>
             <div class="bar-wrap"><div class="bar" style="width:0"></div><div class="label">${esc(o)}</div></div>
@@ -154,11 +164,13 @@
       cloudTimer = setTimeout(() => drawCloud(words), 400);
     },
     poll(el) {
-      const { counts, total, open } = S.poll;
-      const max = Math.max(...counts, 1);
-      $('#pollStatus', el).innerHTML = `${open ? '🟢 Đang mở vote' : '🔒 Đã đóng vote'} · <b>${total}</b> phiếu`;
+      const { counts, total, open, hidden } = S.poll;
+      const shownCounts = counts || S.slide.options.map(() => 0);
+      const max = Math.max(...shownCounts, 1);
+      pollStatus(el);
+      el.classList.toggle('results-hidden', !!hidden);
       el.querySelectorAll('.opt').forEach((row, i) => {
-        const c = counts[i];
+        const c = shownCounts[i];
         row.querySelector('.bar').style.width = (total ? (c / max) * 100 : 0) + '%';
         row.querySelector('.c').textContent = c;
         row.querySelector('.p').textContent = total ? Math.round((c / total) * 100) + '%' : '0%';
@@ -184,6 +196,15 @@
       $('#fbStars', el).textContent = f.count ? '★'.repeat(Math.round(f.overall)) + '☆'.repeat(5 - Math.round(f.overall)) : '';
     },
   };
+
+  // Vote status line: open/closed, ballots, hidden results and the auto-close countdown.
+  function pollStatus(el) {
+    const p = S.poll;
+    const left = p.localEnd ? Math.max(0, Math.ceil((p.localEnd - Date.now()) / 1000)) : 0;
+    const timer = p.open && left ? ` · <span class="poll-timer${left <= 10 ? ' urgent' : ''}">⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</span>` : '';
+    $('#pollStatus', el).innerHTML = `${p.open ? '🟢 Đang mở vote' : '🔒 Đã đóng vote'} · <b>${p.total}</b> phiếu${p.hidden ? ' · 🙈 Kết quả sẽ công bố sau' : ''}${timer}`;
+  }
+  setInterval(() => { if (S?.slide.type === 'poll' && S.poll.localEnd && stage.firstChild) pollStatus(stage.firstChild); }, 250);
 
   function drawCloud(words) {
     const canvas = $('#cloud');

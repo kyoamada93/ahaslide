@@ -69,3 +69,11 @@ body { min-height: 100%; overscroll-behavior: none; }
 .sync-bar { max-width: 560px; margin: 0 auto 8px; padding: 0 16px; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sync-bar b { color: #fff; }
 .sync-bar .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); margin-right: 8px; vertical-align: middle; }
+.seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(0,0,0,.25); margin: 8px 0 4px; }
+.seg button { border: 0; background: none; color: #fff; padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.seg button.on { background: #fff; color: var(--momo); }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 10px 0 14px; }
+.swatches button { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); cursor: pointer; }
+.swatches button.on { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); transform: scale(1.1); }
+.p-timer { color: #fff; }
+.p-timer.urgent { color: #ff8787; }

@@ -6,6 +6,7 @@
   try { key = key || sessionStorage.getItem('th_admin_key'); } catch {}
   let S = null, A = null;
   let qaTab = 'pending';
+  let qaSortAdmin = 'top';
   let lastControlsSig = '';
 
   const TYPE_LABEL = { checkin: 'Check-in', wordcloud: 'Word cloud', poll: 'Vote', speaker: 'Sharing', qa: 'Q&A', race: 'Đua vịt', feedback: 'Feedback' };
@@ -92,6 +93,9 @@
       case 'word': return action({ type: d.hid === '1' ? 'word:unhide' : 'word:hide', slideId: d.s, key: d.k });
       case 'words-reset': if (confirm('Xoá toàn bộ từ khoá của slide này?')) action({ type: 'words:reset', slideId: d.s }); return;
       case 'poll-toggle': return action({ type: 'poll:toggle', slideId: d.s });
+      case 'poll-reveal': return action({ type: 'poll:reveal', slideId: d.s });
+      case 'poll-timer': return action({ type: 'poll:timer', slideId: d.s, seconds: Number(d.t) });
+      case 'qa-sort': qaSortAdmin = d.s; return renderQa();
       case 'poll-reset': if (confirm('Xoá toàn bộ phiếu vote?')) action({ type: 'poll:reset', slideId: d.s }); return;
       case 'race-start': return action({ type: 'race:start' });
       case 'race-rematch': return action({ type: 'race:rematch' });
@@ -132,8 +136,12 @@
     },
     poll: (sl) => {
       const p = A.polls[sl.id];
+      const left = Math.ceil((p.endsIn || 0) / 1000);
       return `<div class="row"><button class="btn small ${p.open ? 'warn' : 'ok'}" data-a="poll-toggle" data-s="${sl.id}">${p.open ? '🔒 Đóng vote' : '🟢 Mở lại vote'}</button>
+        <button class="btn small ${p.hidden ? 'ok' : 'ghost'}" data-a="poll-reveal" data-s="${sl.id}">${p.hidden ? '👁 Công bố kết quả' : '🙈 Ẩn kết quả'}</button>
         <button class="btn small bad" data-a="poll-reset" data-s="${sl.id}">Reset vote</button><span class="pill">${p.total} phiếu</span></div>
+        <div class="row"><span class="muted tiny">Hẹn giờ đóng vote:</span>${[30, 60, 120, 300].map((t) => `<button class="btn small ghost" data-a="poll-timer" data-s="${sl.id}" data-t="${t}">${t < 60 ? t + 's' : t / 60 + ' phút'}</button>`).join('')}
+        ${left ? `<span class="pill">⏱ còn ~${left}s</span>` : ''}</div>
         <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}</div>`).join('')}</div>`;
     },
     speaker: (sl) => `<p>Đang sharing: <b>${esc(sl.speaker)}</b> — ${esc(sl.topic || '')}</p><p class="muted tiny">Khán giả có thể gửi câu hỏi cho speaker này; duyệt ở cột Q&A.</p>`,
@@ -161,10 +169,13 @@
     const counts = { pending: 0, approved: 0, answered: 0, rejected: 0 };
     A.questions.forEach((q) => { counts[q.status] += 1; });
     const labels = { pending: '⏳ Chờ duyệt', approved: '✅ Đã duyệt', answered: '💬 Đã trả lời', rejected: '🚫 Từ chối' };
-    $('#qaTabs').innerHTML = Object.keys(labels).map((t) => `<button data-a="tab" data-t="${t}" class="${qaTab === t ? 'on' : ''}">${labels[t]} (${counts[t]})</button>`).join('');
-    const list = A.questions.filter((q) => q.status === qaTab).sort((a, b) => (qaTab === 'pending' ? a.createdAt - b.createdAt : (b.highlighted - a.highlighted) || b.upvotes - a.upvotes));
+    $('#qaTabs').innerHTML = Object.keys(labels).map((t) => `<button data-a="tab" data-t="${t}" class="${qaTab === t ? 'on' : ''}">${labels[t]} (${counts[t]})</button>`).join('')
+      + (qaTab === 'pending' ? '' : ` <span class="muted tiny">Sắp xếp:</span><button data-a="qa-sort" data-s="top" class="${qaSortAdmin === 'top' ? 'on' : ''}">🔥 Top</button><button data-a="qa-sort" data-s="new" class="${qaSortAdmin === 'new' ? 'on' : ''}">🕒 Mới nhất</button>`);
+    const list = A.questions.filter((q) => q.status === qaTab).sort((a, b) => (qaTab === 'pending' ? a.createdAt - b.createdAt
+      : qaSortAdmin === 'new' ? b.createdAt - a.createdAt : (b.highlighted - a.highlighted) || b.upvotes - a.upvotes));
     $('#qaList').innerHTML = list.length ? list.map((q) => `
-      <div class="qa-item ${q.highlighted ? 'hl' : ''}">
+      <div class="qa-item ${q.highlighted ? 'hl' : ''} ${q.flagged ? 'flag' : ''}">
+        ${q.flagged ? '<div class="flag-note">⚠️ Có thể chứa từ ngữ không phù hợp — kiểm tra trước khi duyệt</div>' : ''}
         <div class="t">${esc(q.text)}</div>
         <div class="by">${esc(q.name)} → ${esc(q.target)} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
         <div class="row">
