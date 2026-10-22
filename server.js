@@ -150,7 +150,7 @@ function audienceState() {
   const slide = currentSlide();
   const view = {
     eventTitle: config.eventTitle, eventSubtitle: config.eventSubtitle, qaTargets: config.qaTargets,
-    slideIndex: state.slideIndex, slide,
+    slideIndex: state.slideIndex, slideCount: slides.length, slide,
   };
   if (slide.type === 'poll') view.poll = pollResults(slide.id);
   if (slide.type === 'race') view.race = raceView();

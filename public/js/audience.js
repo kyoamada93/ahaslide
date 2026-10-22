@@ -9,6 +9,7 @@
   let lastSig = '';
   const fb = { overall: 0, content: 0, organization: 0 };
 
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !socket.connected) socket.connect(); });
   socket.on('connect', () => {
     if (uid) socket.emit('hello', uid, (res) => { if (!res?.ok) { uid = null; ME = { user: null }; render(true); } });
     else { ME = { user: null }; render(true); }
@@ -34,6 +35,10 @@
 
   function render(force) {
     if (!S || !ME) return;
+    // Same slide as the big screen: shown so people can see their phone follows the presenter.
+    const bar = $('#syncBar');
+    bar.classList.toggle('hidden', !ME.user);
+    bar.innerHTML = `<span class="live"></span>Đang cùng màn hình chính · Slide ${S.slideIndex + 1}/${S.slideCount} · <b>${esc(S.slide.speaker ? `${S.slide.title} — ${S.slide.speaker}` : S.slide.title)}</b>`;
     const chip = $('#meChip');
     chip.classList.toggle('hidden', !ME.user);
     if (ME.user) chip.textContent = '👋 ' + ME.user.name;
