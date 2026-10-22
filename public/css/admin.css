@@ -39,3 +39,9 @@ body.admin { overflow: auto; }
 .moderator .qa-list { max-height: none; }
 .moderator .qa-item .t { font-size: 18px; }
 .moderator .qa-item .btn.small { padding: 10px 16px; font-size: 15px; }
+.brand { display: flex; flex-direction: column; gap: 8px; }
+.brand .slot { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; background: rgba(255,255,255,.06); border-radius: 12px; padding: 8px; }
+.brand .slot img { width: 64px; height: 40px; object-fit: contain; background: rgba(0,0,0,.3); border-radius: 8px; }
+.brand .slot b { font-size: 13px; display: block; margin-bottom: 4px; }
+.brand .slot label { display: inline-block; margin: 0; cursor: pointer; }
+.brand .slot input[type=file] { display: none; }

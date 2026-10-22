@@ -204,6 +204,47 @@ app.get('/', (_req, res) => res.sendFile(path.join(pub, 'audience.html')));
 app.get('/screen', (_req, res) => res.sendFile(path.join(pub, 'screen.html')));
 app.get('/admin', (_req, res) => res.sendFile(path.join(pub, 'admin.html')));
 app.get('/moderator', (_req, res) => res.sendFile(path.join(pub, 'moderator.html')));
+// Branding slots: an admin upload in DATA_DIR/brand overrides the bundled default asset.
+const BRAND = {
+  'momo-logo': 'assets/momo-logo.svg',
+  'ai-data-logo': 'assets/ai-data-logo.svg',
+  bg: 'assets/bg.jpg',
+  'bg-mobile': 'assets/bg-mobile.jpg',
+};
+const BRAND_DIR = path.join(DATA_DIR, 'brand');
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif'];
+app.get('/brand/:slot', (req, res) => {
+  const slot = req.params.slot;
+  if (!BRAND[slot]) return res.status(404).end();
+  res.setHeader('Cache-Control', 'no-cache');
+  const meta = path.join(BRAND_DIR, slot + '.json');
+  if (fs.existsSync(meta)) {
+    const { type } = JSON.parse(fs.readFileSync(meta, 'utf8'));
+    res.type(type);
+    return res.sendFile(path.join(BRAND_DIR, slot + '.bin'));
+  }
+  res.sendFile(path.join(pub, BRAND[slot]));
+});
+app.post('/api/brand/:slot', express.raw({ type: IMAGE_TYPES, limit: '12mb' }), (req, res) => {
+  if (req.query.key !== ADMIN_KEY) return res.status(401).send('Unauthorized');
+  const slot = req.params.slot;
+  const type = (req.get('content-type') || '').split(';')[0];
+  if (!BRAND[slot]) return res.status(404).send('unknown slot');
+  if (!IMAGE_TYPES.includes(type) || !Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).send('Cần file ảnh PNG/JPG/WebP/SVG');
+  fs.mkdirSync(BRAND_DIR, { recursive: true });
+  fs.writeFileSync(path.join(BRAND_DIR, slot + '.bin'), req.body);
+  fs.writeFileSync(path.join(BRAND_DIR, slot + '.json'), JSON.stringify({ type, at: Date.now() }));
+  io.emit('brand', slot);
+  res.json({ ok: true });
+});
+app.delete('/api/brand/:slot', (req, res) => {
+  if (req.query.key !== ADMIN_KEY) return res.status(401).send('Unauthorized');
+  const slot = req.params.slot;
+  if (!BRAND[slot]) return res.status(404).send('unknown slot');
+  for (const ext of ['.bin', '.json']) fs.rmSync(path.join(BRAND_DIR, slot + ext), { force: true });
+  io.emit('brand', slot);
+  res.json({ ok: true });
+});
 app.use(express.static(pub, { maxAge: '1h' }));
 app.get('/vendor/wordcloud2.js', (_req, res) => res.sendFile(require.resolve('wordcloud/src/wordcloud2.js')));
 

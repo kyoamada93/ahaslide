@@ -32,6 +32,16 @@ window.TH = (() => {
   socket.on('connect', () => conn.classList.add('hidden'));
   socket.on('disconnect', () => conn.classList.remove('hidden'));
 
+  // Branding uploaded from admin: reload logos/background without a page refresh.
+  socket.on('brand', (slot) => {
+    const v = Date.now();
+    document.querySelectorAll(`img[src^="/brand/${slot}"]`).forEach((img) => { img.src = `/brand/${slot}?v=${v}`; });
+    if (slot === 'bg' || slot === 'bg-mobile') {
+      const bg = document.querySelector('.bg');
+      if (bg) bg.style.backgroundImage = `url('/brand/${matchMedia('(max-aspect-ratio: 1/1)').matches ? 'bg-mobile' : 'bg'}?v=${v}')`;
+    }
+  });
+
   // Floating particles over the AI background.
   function particles(canvas, count = 60) {
     const ctx = canvas.getContext('2d');

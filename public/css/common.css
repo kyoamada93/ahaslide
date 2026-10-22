@@ -21,9 +21,9 @@ body { -webkit-font-smoothing: antialiased; }
 button, input, textarea, select { font: inherit; }
 .bg {
   position: fixed; inset: 0; z-index: -2;
-  background: #2a001b url('/assets/bg.jpg') center / cover no-repeat;
+  background: #2a001b url('/brand/bg') center / cover no-repeat;
 }
-@media (max-aspect-ratio: 1/1) { .bg { background-image: url('/assets/bg-mobile.jpg'); } }
+@media (max-aspect-ratio: 1/1) { .bg { background-image: url('/brand/bg-mobile'); } }
 .bg-fx { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 
 .glass {
@@ -59,7 +59,7 @@ label { display: block; font-weight: 600; margin: 14px 0 6px; }
 .hidden { display: none !important; }
 .row { display: flex; gap: 10px; align-items: center; }
 .logos { display: flex; align-items: center; gap: 14px; }
-.logos img.momo { height: 44px; width: 44px; border-radius: 10px; }
+.logos img.momo { height: 44px; width: auto; border-radius: 10px; }
 .logos img.aidata { height: 44px; }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 99;

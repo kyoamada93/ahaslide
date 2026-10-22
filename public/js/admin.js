@@ -23,9 +23,27 @@
       $('#preview').src = '/screen';
       $('#exports').innerHTML = ['checkins', 'words', 'votes', 'questions', 'race', 'feedback']
         .map((w) => `<a class="btn small ghost" href="/api/export/${w}?key=${encodeURIComponent(k)}">${w}</a>`).join('');
+      renderBrand();
       fitPreview();
     }
   }
+
+  const BRAND_SLOTS = [['momo-logo', 'Logo MoMo'], ['ai-data-logo', 'Logo AI & Data'], ['bg', 'Background 16:9 (màn chiếu)'], ['bg-mobile', 'Background 9:16 (điện thoại)']];
+  function renderBrand() {
+    const v = Date.now();
+    $('#brand').innerHTML = BRAND_SLOTS.map(([slot, label]) => `
+      <div class="slot"><img src="/brand/${slot}?v=${v}" alt=""><div><b>${label}</b>
+        <label class="btn small ghost">Tải lên<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" data-slot="${slot}"></label>
+        <button class="btn small ghost" data-a="brand-reset" data-slot="${slot}">Mặc định</button></div></div>`).join('');
+  }
+  document.addEventListener('change', async (e) => {
+    const inp = e.target.closest('input[type=file][data-slot]');
+    if (!inp || !inp.files[0]) return;
+    const f = inp.files[0];
+    const r = await fetch(`/api/brand/${inp.dataset.slot}?key=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': f.type }, body: f });
+    toast(r.ok ? 'Đã cập nhật ✅' : 'Lỗi: ' + (await r.text()));
+    renderBrand();
+  });
   socket.on('connect', () => (key ? login(key) : $('#login').classList.remove('hidden')));
   $('#loginBtn').onclick = () => login($('#keyInput').value.trim());
   $('#keyInput').addEventListener('keydown', (e) => e.key === 'Enter' && $('#loginBtn').click());
@@ -77,6 +95,11 @@
       case 'poll-reset': if (confirm('Xoá toàn bộ phiếu vote?')) action({ type: 'poll:reset', slideId: d.s }); return;
       case 'race-start': return action({ type: 'race:start' });
       case 'race-rematch': return action({ type: 'race:rematch' });
+      case 'brand-reset': {
+        const r = await fetch(`/api/brand/${d.slot}?key=${encodeURIComponent(key)}`, { method: 'DELETE' });
+        toast(r.ok ? 'Đã trả về mặc định' : 'Lỗi');
+        return renderBrand();
+      }
       case 'race-reset': if (confirm('Xoá danh sách người chơi và tạo cuộc đua mới?')) action({ type: 'race:reset' }); return;
     }
   });
