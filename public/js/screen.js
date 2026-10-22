@@ -75,13 +75,19 @@
     },
     speaker(el, sl) {
       const initial = (sl.speaker || '?').split(' ').pop().charAt(0);
-      el.innerHTML = `
+      const intro = `
         <div class="kicker">${esc(sl.title || 'Sharing')}</div>
         <div class="avatar">${sl.photo ? `<img src="${esc(sl.photo)}" alt="">` : esc(initial)}</div>
         <h1>${esc(sl.speaker)}</h1>
         <div class="topic">${esc(sl.topic || '')}</div>
         <div class="muted" style="font-size:22px">${esc(sl.role || '')}</div>
         <div class="ask glass">💬 Gửi câu hỏi cho ${esc(sl.speaker)} ngay trên điện thoại</div>`;
+      if (!sl.agenda?.length) { el.innerHTML = intro; return; }
+      el.classList.add('with-agenda');
+      el.innerHTML = `<div class="sp-intro">${intro}</div>
+        <div class="agenda glass">${sl.agenda.map((a, i) => `
+          <div class="ag"><div class="ag-n">${i + 1}</div><div><div class="ag-t">${esc(a.title)}</div>
+            <ul>${(a.items || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`).join('')}</div>`;
     },
     qa(el, sl) {
       el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p>

@@ -133,6 +133,7 @@
         <div class="kick">${esc(sl.title || 'Sharing')}</div>
         <h2>🎤 ${esc(sl.speaker)}</h2>
         <p>${esc(sl.topic || '')}</p>
+        ${(sl.agenda || []).map((a, i) => `<div style="text-align:left;margin-top:12px"><b>${i + 1}. ${esc(a.title)}</b><div class="muted" style="font-size:14px">${(a.items || []).map(esc).join(' · ')}</div></div>`).join('')}
       </div>
       ${askBox(sl.speaker)}
       ${myQuestions()}`,
