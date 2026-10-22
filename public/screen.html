@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Townhall AI & Data — Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/screen.css">
+</head>
+<body>
+<div class="bg"></div>
+<canvas class="bg-fx" id="fx"></canvas>
+
+<header class="top">
+  <div class="logos">
+    <img class="momo" src="/assets/momo-logo.svg" alt="MoMo">
+    <img class="aidata" src="/assets/ai-data-logo.svg" alt="AI & Data">
+  </div>
+  <div class="top-right">
+    <div class="count-chip glass"><span class="dot"></span><b id="checkedCount">0</b>&nbsp;đã check-in</div>
+    <div class="mini-join glass" id="miniJoin">
+      <div class="mini-qr" id="miniQr"></div>
+      <div><div class="muted small">Tham gia tại</div><b id="miniUrl"></b></div>
+    </div>
+  </div>
+</header>
+
+<main id="stage"></main>
+
+<footer class="bottom">
+  <div id="dots" class="dots"></div>
+  <div class="muted small" id="hint">F: toàn màn hình</div>
+</footer>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/vendor/wordcloud2.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/screen.js"></script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+(() => {
+  const { socket, $, esc, toast, emit } = TH;
+  const isMod = document.body.classList.contains('moderator');
+  const params = new URLSearchParams(location.search);
+  let key = params.get('key');
+  try { key = key || sessionStorage.getItem('th_admin_key'); } catch {}
+  let S = null, A = null;
+  let qaTab = 'pending';
+  let lastControlsSig = '';
+
+  const TYPE_LABEL = { checkin: 'Check-in', wordcloud: 'Word cloud', poll: 'Vote', speaker: 'Sharing', qa: 'Q&A', race: 'Đua vịt', feedback: 'Feedback' };
+
+  async function login(k) {
+    const res = await emit('admin:auth', k);
+    if (!res.ok) { $('#login').classList.remove('hidden'); $('#panel').classList.add('hidden'); if (k) toast('Sai admin key'); return; }
+    key = k;
+    try { sessionStorage.setItem('th_admin_key', k); } catch {}
+    $('#login').classList.add('hidden');
+    $('#panel').classList.remove('hidden');
+    if (!isMod) {
+      $('#openScreen').href = '/screen?key=' + encodeURIComponent(k);
+      $('#openMod').href = '/moderator?key=' + encodeURIComponent(k);
+      $('#preview').src = '/screen';
+      $('#exports').innerHTML = ['checkins', 'words', 'votes', 'questions', 'race', 'feedback']
+        .map((w) => `<a class="btn small ghost" href="/api/export/${w}?key=${encodeURIComponent(k)}">${w}</a>`).join('');
+      fitPreview();
+    }
+  }
+  socket.on('connect', () => (key ? login(key) : $('#login').classList.remove('hidden')));
+  $('#loginBtn').onclick = () => login($('#keyInput').value.trim());
+  $('#keyInput').addEventListener('keydown', (e) => e.key === 'Enter' && $('#loginBtn').click());
+
+  function fitPreview() {
+    const box = $('.preview');
+    if (!box) return;
+    $('#preview').style.transform = `scale(${box.clientWidth / 1920})`;
+  }
+  addEventListener('resize', fitPreview);
+
+  socket.on('state', (s) => { S = s; renderMain(); });
+  socket.on('admin', (a) => { A = a; renderMain(); renderQa(); });
+  socket.on('race:frame', () => {});
+
+  async function action(a) {
+    const res = await emit('admin:action', a);
+    if (!res.ok && res.error) toast(res.error);
+    return res;
+  }
+
+  if (!isMod) {
+    addEventListener('keydown', (e) => {
+      if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') action({ type: 'next' });
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') action({ type: 'prev' });
+    });
+  }
+
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-a]');
+    if (!b) return;
+    const d = b.dataset;
+    switch (d.a) {
+      case 'next': case 'prev': return action({ type: d.a });
+      case 'goto': return action({ type: 'goto', index: Number(d.i) });
+      case 'reset-all': {
+        const c = prompt('Xoá TẤT CẢ dữ liệu (check-in, vote, câu hỏi, feedback…). Gõ RESET để xác nhận:');
+        if (c === 'RESET') { await action({ type: 'reset:all', confirm: 'RESET' }); toast('Đã reset'); }
+        return;
+      }
+      case 'qa': return action({ type: 'qa:status', qid: d.id, status: d.s });
+      case 'qa-hl': return action({ type: 'qa:highlight', qid: d.id });
+      case 'qa-del': if (confirm('Xoá câu hỏi này?')) action({ type: 'qa:delete', qid: d.id }); return;
+      case 'tab': qaTab = d.t; return renderQa();
+      case 'word': return action({ type: d.hid === '1' ? 'word:unhide' : 'word:hide', slideId: d.s, key: d.k });
+      case 'words-reset': if (confirm('Xoá toàn bộ từ khoá của slide này?')) action({ type: 'words:reset', slideId: d.s }); return;
+      case 'poll-toggle': return action({ type: 'poll:toggle', slideId: d.s });
+      case 'poll-reset': if (confirm('Xoá toàn bộ phiếu vote?')) action({ type: 'poll:reset', slideId: d.s }); return;
+      case 'race-start': return action({ type: 'race:start' });
+      case 'race-rematch': return action({ type: 'race:rematch' });
+      case 'race-reset': if (confirm('Xoá danh sách người chơi và tạo cuộc đua mới?')) action({ type: 'race:reset' }); return;
+    }
+  });
+
+  function renderMain() {
+    if (!S || !A) return;
+    $('#stUsers').textContent = A.users.length;
+    $('#curTitle').textContent = `${S.slideIndex + 1}. ${S.slide.title}${S.slide.speaker ? ' — ' + S.slide.speaker : ''}`;
+    if (isMod) return;
+    $('#stOnline').textContent = A.online;
+    $('#curType').textContent = TYPE_LABEL[S.slide.type] || S.slide.type;
+    $('#slideList').innerHTML = S.slides.map((sl, i) => `<li data-a="goto" data-i="${i}" class="${i === S.slideIndex ? 'on' : ''}"><span class="i">${i + 1}</span><div>${esc(sl.title)}${sl.speaker ? ' — ' + esc(sl.speaker) : ''}<small>${TYPE_LABEL[sl.type] || sl.type}</small></div></li>`).join('');
+    const sig = JSON.stringify([S.slide.id, A.words, A.hiddenWords, A.polls, A.race, A.feedback, A.feedbackList.length, A.users.length]);
+    if (sig === lastControlsSig) return;
+    lastControlsSig = sig;
+    $('#controls').innerHTML = (controls[S.slide.type] || (() => '<p class="muted">Không có điều khiển riêng cho slide này.</p>'))(S.slide);
+    fitPreview();
+  }
+
+  const controls = {
+    checkin: () => `<p><b>${A.users.length}</b> người đã check-in.</p>
+      <div class="fb-list">${A.users.slice().reverse().slice(0, 80).map((u) => `<div>${esc(u.name)} <span class="muted">${esc(u.team || '')}</span></div>`).join('')}</div>`,
+    wordcloud: (sl) => {
+      const words = A.words[sl.id] || [];
+      const hidden = A.hiddenWords[sl.id] || [];
+      return `<p class="muted tiny">Bấm vào từ để ẩn/hiện khỏi word cloud (lọc từ không phù hợp).</p>
+        <div class="words">${words.map((w) => `<button data-a="word" data-s="${sl.id}" data-k="${esc(w.key)}">${esc(w.text)} · ${w.count}</button>`).join('')}
+        ${hidden.map((k) => `<button class="hid" data-a="word" data-hid="1" data-s="${sl.id}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+        <div class="row"><button class="btn small bad" data-a="words-reset" data-s="${sl.id}">Xoá tất cả từ khoá</button></div>`;
+    },
+    poll: (sl) => {
+      const p = A.polls[sl.id];
+      return `<div class="row"><button class="btn small ${p.open ? 'warn' : 'ok'}" data-a="poll-toggle" data-s="${sl.id}">${p.open ? '🔒 Đóng vote' : '🟢 Mở lại vote'}</button>
+        <button class="btn small bad" data-a="poll-reset" data-s="${sl.id}">Reset vote</button><span class="pill">${p.total} phiếu</span></div>
+        <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}</div>`).join('')}</div>`;
+    },
+    speaker: (sl) => `<p>Đang sharing: <b>${esc(sl.speaker)}</b> — ${esc(sl.topic || '')}</p><p class="muted tiny">Khán giả có thể gửi câu hỏi cho speaker này; duyệt ở cột Q&A.</p>`,
+    qa: () => `<p class="muted">Duyệt câu hỏi ở cột bên phải. ⭐ Highlight = hiển thị to trên màn hình (đang trả lời).</p>`,
+    race: () => {
+      const r = A.race;
+      return `<p>Trạng thái: <b>${{ lobby: 'Chờ người chơi', countdown: 'Đếm ngược', racing: 'Đang đua', finished: 'Kết thúc' }[r.phase]}</b> · ${r.playerCount} vịt</p>
+        <div class="row">
+          <button class="btn ok" data-a="race-start" ${r.phase !== 'lobby' || !r.playerCount ? 'disabled' : ''}>🏁 Bắt đầu đua</button>
+          <button class="btn small ghost" data-a="race-rematch" ${r.phase === 'racing' || r.phase === 'countdown' ? 'disabled' : ''}>🔁 Đua lại (giữ người chơi)</button>
+          <button class="btn small bad" data-a="race-reset">Tạo cuộc đua mới</button>
+        </div>
+        ${r.finishOrder.length ? `<div class="fb-list">${r.finishOrder.slice(0, 10).map((p, i) => `<div>#${i + 1} ${esc(p.name)}</div>`).join('')}</div>` : ''}
+        ${A.raceHistory.length ? `<p class="muted tiny">Lịch sử: ${A.raceHistory.map((h, i) => `Lượt ${i + 1}: 🥇 ${esc(h.podium[0]?.name || '')}`).join(' · ')}</p>` : ''}`;
+    },
+    feedback: () => {
+      const f = A.feedback;
+      return `<p><b>${f.count}</b> lượt · Tổng thể <b>${f.overall.toFixed(2)}</b> · Nội dung <b>${f.content.toFixed(2)}</b> · Tổ chức <b>${f.organization.toFixed(2)}</b></p>
+        <div class="fb-list">${A.feedbackList.map((x) => `<div><b>${x.anonymous ? 'Ẩn danh' : esc(x.name)}</b> · ${'★'.repeat(x.overall)}${x.liked ? `<br>👍 ${esc(x.liked)}` : ''}${x.suggestion ? `<br>💡 ${esc(x.suggestion)}` : ''}${x.nextTopics ? `<br>📚 ${esc(x.nextTopics)}` : ''}</div>`).join('')}</div>`;
+    },
+  };
+
+  function renderQa() {
+    if (!A) return;
+    const counts = { pending: 0, approved: 0, answered: 0, rejected: 0 };
+    A.questions.forEach((q) => { counts[q.status] += 1; });
+    const labels = { pending: '⏳ Chờ duyệt', approved: '✅ Đã duyệt', answered: '💬 Đã trả lời', rejected: '🚫 Từ chối' };
+    $('#qaTabs').innerHTML = Object.keys(labels).map((t) => `<button data-a="tab" data-t="${t}" class="${qaTab === t ? 'on' : ''}">${labels[t]} (${counts[t]})</button>`).join('');
+    const list = A.questions.filter((q) => q.status === qaTab).sort((a, b) => (qaTab === 'pending' ? a.createdAt - b.createdAt : (b.highlighted - a.highlighted) || b.upvotes - a.upvotes));
+    $('#qaList').innerHTML = list.length ? list.map((q) => `
+      <div class="qa-item ${q.highlighted ? 'hl' : ''}">
+        <div class="t">${esc(q.text)}</div>
+        <div class="by">${esc(q.name)} → ${esc(q.target)} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="row">
+          ${q.status !== 'approved' ? `<button class="btn small ok" data-a="qa" data-s="approved" data-id="${q.id}">✅ Approve</button>` : ''}
+          ${q.status === 'approved' ? `<button class="btn small warn" data-a="qa-hl" data-id="${q.id}">${q.highlighted ? '⭐ Bỏ highlight' : '⭐ Highlight'}</button>` : ''}
+          ${q.status === 'approved' ? `<button class="btn small ghost" data-a="qa" data-s="answered" data-id="${q.id}">💬 Đã trả lời</button>` : ''}
+          ${q.status !== 'rejected' ? `<button class="btn small bad" data-a="qa" data-s="rejected" data-id="${q.id}">🚫 Ẩn</button>` : ''}
+          ${q.status !== 'pending' ? `<button class="btn small ghost" data-a="qa" data-s="pending" data-id="${q.id}">↩ Chờ duyệt</button>` : ''}
+          <button class="btn small ghost" data-a="qa-del" data-id="${q.id}">🗑</button>
+        </div>
+      </div>`).join('') : '<p class="muted">Không có câu hỏi.</p>';
+  }
+})();

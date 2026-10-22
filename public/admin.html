@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Townhall — Điều khiển</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin">
+<div class="bg"></div>
+<div id="login" class="login glass hidden">
+  <h2>Đăng nhập điều khiển</h2>
+  <input type="text" id="keyInput" placeholder="Admin key">
+  <button class="btn" id="loginBtn" style="margin-top:12px;width:100%">Vào</button>
+</div>
+
+<div id="panel" class="hidden">
+  <header class="ad-top">
+    <div class="logos"><img class="momo" src="/assets/momo-logo.svg" alt=""><img class="aidata" src="/assets/ai-data-logo.svg" alt=""></div>
+    <div class="row stats-row">
+      <span class="pill">👥 <b id="stUsers">0</b> check-in</span>
+      <span class="pill">🟢 <b id="stOnline">0</b> online</span>
+      <a class="btn small ghost" id="openScreen" target="_blank">Mở màn hình chiếu ↗</a>
+      <a class="btn small ghost" id="openMod" target="_blank">Moderator ↗</a>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="glass box">
+      <h3>Slides</h3>
+      <ol id="slideList" class="slide-list"></ol>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" data-a="prev" style="flex:1">◀ Trước</button>
+        <button class="btn" data-a="next" style="flex:1">Tiếp ▶</button>
+      </div>
+      <p class="muted tiny">Phím tắt: ← → (hoặc clicker)</p>
+      <h3 style="margin-top:20px">Xuất dữ liệu (CSV)</h3>
+      <div class="exports" id="exports"></div>
+      <h3 style="margin-top:20px">Nguy hiểm</h3>
+      <button class="btn small bad" data-a="reset-all">Reset toàn bộ dữ liệu</button>
+    </aside>
+
+    <section class="glass box">
+      <div class="row" style="justify-content:space-between"><h3 id="curTitle">—</h3><span class="pill" id="curType"></span></div>
+      <div class="preview"><iframe id="preview" title="preview"></iframe></div>
+      <div id="controls" class="controls"></div>
+    </section>
+
+    <section class="glass box">
+      <h3>Q&A — duyệt câu hỏi</h3>
+      <div class="tabs" id="qaTabs"></div>
+      <div id="qaList" class="qa-list"></div>
+    </section>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
