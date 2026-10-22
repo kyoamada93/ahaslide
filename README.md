@@ -89,9 +89,9 @@ Sửa `config.json` (khởi động lại server để áp dụng):
 
 ### Logo & background
 
-**Cách nhanh nhất:** trang admin → mục **Logo & background** → *Tải lên* logo MoMo, logo AI & Data, ảnh nền 16:9 (màn chiếu) và 9:16 (điện thoại). Ảnh được lưu trong `DATA_DIR/brand/` và áp dụng ngay cho mọi màn hình đang mở; nút *Mặc định* để quay về ảnh có sẵn.
+**Cách nhanh nhất:** trang admin → mục **Logo & background** → *Tải lên* logo AI & Data, ảnh nền 16:9 (màn chiếu) và 9:16 (điện thoại). Ảnh được lưu trong `DATA_DIR/brand/` và áp dụng ngay cho mọi màn hình đang mở; nút *Mặc định* để quay về ảnh có sẵn.
 
-- `public/assets/momo-logo.svg`, `public/assets/ai-data-logo.svg` là bản vẽ lại tạm thời (dùng khi chưa upload logo chính thức).
+- `public/assets/ai-data-logo.svg` là bản vẽ lại tạm thời (dùng khi chưa upload logo chính thức).
 - `public/assets/bg.jpg` (16:9) và `bg-mobile.jpg` (9:16) là ảnh nền phong cách "AI neural network" tông màu MoMo, được render bằng `scripts/gen-background.js`. Muốn dùng ảnh từ Midjourney/DALL·E/Firefly thì ghi đè 2 file này. Prompt gợi ý:
   > abstract futuristic AI neural network, glowing magenta and deep plum particles, flowing light waves, data streams, MoMo pink #A50064, dark background, cinematic, 16:9, no text
 

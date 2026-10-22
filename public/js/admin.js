@@ -28,7 +28,7 @@
     }
   }
 
-  const BRAND_SLOTS = [['momo-logo', 'Logo MoMo'], ['ai-data-logo', 'Logo AI & Data'], ['bg', 'Background 16:9 (màn chiếu)'], ['bg-mobile', 'Background 9:16 (điện thoại)']];
+  const BRAND_SLOTS = [['ai-data-logo', 'Logo AI & Data'], ['bg', 'Background 16:9 (màn chiếu)'], ['bg-mobile', 'Background 9:16 (điện thoại)']];
   function renderBrand() {
     const v = Date.now();
     $('#brand').innerHTML = BRAND_SLOTS.map(([slot, label]) => `

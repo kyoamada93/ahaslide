@@ -59,7 +59,6 @@ label { display: block; font-weight: 600; margin: 14px 0 6px; }
 .hidden { display: none !important; }
 .row { display: flex; gap: 10px; align-items: center; }
 .logos { display: flex; align-items: center; gap: 14px; }
-.logos img.momo { height: 44px; width: auto; border-radius: 10px; }
 .logos img.aidata { height: 44px; }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 99;

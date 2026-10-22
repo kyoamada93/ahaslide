@@ -223,7 +223,6 @@ app.get('/admin', (_req, res) => res.sendFile(path.join(pub, 'admin.html')));
 app.get('/moderator', (_req, res) => res.sendFile(path.join(pub, 'moderator.html')));
 // Branding slots: an admin upload in DATA_DIR/brand overrides the bundled default asset.
 const BRAND = {
-  'momo-logo': 'assets/momo-logo.svg',
   'ai-data-logo': 'assets/ai-data-logo.svg',
   bg: 'assets/bg.jpg',
   'bg-mobile': 'assets/bg-mobile.jpg',

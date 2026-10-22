@@ -27,7 +27,7 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     const act = async (a) => { const r = await call(admin, 'admin:action', a); assert.ok(r.ok, JSON.stringify([a, r])); await wait(250); };
 
     // HTTP pages + QR
-    for (const p of ['/', '/screen', '/admin', '/moderator', '/vendor/wordcloud2.js', '/assets/bg.jpg', '/brand/momo-logo', '/brand/bg']) {
+    for (const p of ['/', '/screen', '/admin', '/moderator', '/vendor/wordcloud2.js', '/assets/bg.jpg', '/brand/ai-data-logo', '/brand/bg']) {
       const r = await fetch(URL + p); assert.equal(r.status, 200, p);
     }
     const j = await (await fetch(URL + '/api/join')).json();
@@ -130,11 +130,11 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     // branding upload
     const png = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'bg.jpg'));
     assert.equal((await fetch(`${URL}/api/brand/bg`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: png })).status, 401, 'brand needs key');
-    assert.equal((await fetch(`${URL}/api/brand/momo-logo?key=${KEY}`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: png })).status, 200);
-    const got = await fetch(`${URL}/brand/momo-logo`);
+    assert.equal((await fetch(`${URL}/api/brand/ai-data-logo?key=${KEY}`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: png })).status, 200);
+    const got = await fetch(`${URL}/brand/ai-data-logo`);
     assert.equal(got.headers.get('content-type'), 'image/jpeg', 'uploaded logo served');
-    assert.equal((await fetch(`${URL}/api/brand/momo-logo?key=${KEY}`, { method: 'DELETE' })).status, 200);
-    assert.ok((await fetch(`${URL}/brand/momo-logo`)).headers.get('content-type').includes('svg'), 'default restored');
+    assert.equal((await fetch(`${URL}/api/brand/ai-data-logo?key=${KEY}`, { method: 'DELETE' })).status, 200);
+    assert.ok((await fetch(`${URL}/brand/ai-data-logo`)).headers.get('content-type').includes('svg'), 'default restored');
 
     console.log('✅ smoke test passed');
     users.forEach((s) => s.close()); admin.close();
