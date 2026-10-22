@@ -55,7 +55,7 @@
   }
   addEventListener('resize', fitPreview);
 
-  socket.on('state', (s) => { S = s; renderMain(); });
+  socket.on('state', (s) => { if (!s.slides) return; S = s; renderMain(); });
   socket.on('admin', (a) => { A = a; renderMain(); renderQa(); });
   socket.on('race:frame', () => {});
 

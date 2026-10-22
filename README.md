@@ -9,11 +9,28 @@
 | 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic (đổi được đến khi đóng vote) | Biểu đồ cột realtime, topic dẫn đầu màu vàng |
 | 4 | **Sharing — Anh Dũng** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
 | 5 | **Sharing — Chị Yên** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
-| 6 | **Q&A realtime** | Gửi câu hỏi, upvote câu đã duyệt | Chỉ hiện câu hỏi **moderator đã Approve**; câu Highlight hiện to |
-| 7 | **Đua vịt** | Bấm "Tham gia đua", tap liên tục để vịt tăng tốc | Đường đua realtime, bảng dẫn đầu, podium + pháo giấy |
+| 6 | **Q&A realtime** (luôn **ẩn danh**) | Gửi câu hỏi, upvote câu đã duyệt | Chỉ hiện câu hỏi **moderator đã Approve**; câu Highlight hiện to |
+| 7 | **Đua vịt** | Bấm "Tham gia đua", tap liên tục để vịt tăng tốc (thanh tốc độ, BOOST, vị trí realtime) | Dòng sông dài, camera bám theo vịt dẫn đầu, đèn xuất phát, bảng dẫn đầu, mini-map, podium + pháo giấy |
 | 8 | **Đánh giá & góp ý** | Chấm sao + góp ý cho kỳ sau | Số lượt đánh giá, điểm trung bình |
 
-## Chạy nhanh
+## Chạy online — không cần máy local (Render)
+
+App là 1 server Node.js giữ kết nối realtime (WebSocket), nên cần một dịch vụ chạy server liên tục. Cách đơn giản nhất là **Render** (render.com) — repo đã có sẵn `render.yaml`.
+
+1. Đăng nhập https://render.com bằng tài khoản GitHub (cấp quyền cho repo `kyoamada93/ahaslide`).
+2. **New + → Blueprint** → chọn repo `ahaslide` → chọn branch có code (vd. `main` sau khi merge, hoặc `claude/townhall-ai-data-program-aowi1a`) → **Apply**.
+3. Render tự build và chạy. Khi xong sẽ có địa chỉ dạng `https://townhall-ai-data.onrender.com`. QR trên màn hình tự dùng địa chỉ này.
+4. Lấy mật khẩu admin: service → **Environment** → `ADMIN_KEY` (Render tự sinh; có thể đổi).
+5. Mở trên laptop trình chiếu:
+   - Màn hình chiếu: `https://<app>.onrender.com/screen?key=<ADMIN_KEY>` (bấm `F` toàn màn hình)
+   - Presenter: `https://<app>.onrender.com/admin?key=<ADMIN_KEY>`
+   - Moderator Q&A (máy/điện thoại khác): `https://<app>.onrender.com/moderator?key=<ADMIN_KEY>`
+
+**Gói nên dùng:** `render.yaml` để gói **Starter** (0.5 CPU, 512 MB) + ổ đĩa 1 GB để dữ liệu và logo/ảnh nền đã upload không mất khi restart. Với 300 người, CPU đo được trung bình 5–14% và đỉnh ~48% của 1 core (xem *Kiểm thử tải* bên dưới) → vừa với 0.5 CPU. Gói **Free** (0.1 CPU, không có ổ đĩa, tự ngủ sau 15 phút không có request) chỉ nên dùng để thử; nếu dùng Free thì xoá phần `disk` trong `render.yaml`, đổi `plan: free`, và mở `/screen` trước giờ G vài phút để server "thức dậy".
+
+Cách khác: bất kỳ dịch vụ nào chạy được Docker (Railway, Fly.io, VM nội bộ…) bằng `Dockerfile` có sẵn — chạy **đúng 1 instance**, đặt `PUBLIC_URL` = địa chỉ công khai, `DATA_DIR` trỏ vào ổ đĩa bền vững.
+
+## Chạy trên máy (tuỳ chọn)
 
 ```bash
 npm install
@@ -45,7 +62,7 @@ Nếu mở `/screen` qua tên miền công khai thì QR tự lấy tên miền �
 |------|----------|---------|
 | `PORT` | `3000` | Cổng HTTP |
 | `ADMIN_KEY` | `momo-aidata` | Mật khẩu cho admin / moderator / điều khiển màn hình |
-| `PUBLIC_URL` | tự phát hiện | URL khán giả dùng (mã hoá trong QR) |
+| `PUBLIC_URL` | tự phát hiện (trên Render dùng `RENDER_EXTERNAL_URL`) | URL khán giả dùng (mã hoá trong QR) |
 | `DATA_DIR` | `./data` | Nơi lưu `state.json` (tự lưu mỗi giây, khởi động lại không mất dữ liệu) |
 | `CONFIG_FILE` | `./config.json` | File cấu hình chương trình |
 
@@ -70,9 +87,23 @@ Sửa `config.json` (khởi động lại server để áp dụng):
 ## Tập dượt & kiểm thử
 
 ```bash
-npm test                                        # test end-to-end toàn bộ luồng (tự bật server tạm)
-node scripts/simulate.js http://localhost:3000 50   # 50 khán giả ảo để tập dượt
+npm test                                              # test end-to-end toàn bộ luồng (tự bật server tạm)
+npm run load-test                                     # 300 khán giả ảo chạy hết chương trình, in độ trễ + CPU
+node scripts/load-test.js 300 https://<app>.onrender.com <ADMIN_KEY>   # thử tải trên server thật (nhớ Reset sau đó)
+node scripts/simulate.js https://<app>.onrender.com 50                 # 50 khán giả ảo để tập dượt cùng presenter
 ```
+
+### Kết quả kiểm thử tải (300 người cùng lúc)
+
+| Chỉ số | Kết quả |
+|---|---|
+| Check-in / vote / từ khoá / câu hỏi / upvote / feedback | 300/300 thành công, 0 lỗi; phản hồi p95 ≤ 36 ms |
+| Presenter chuyển slide → 300 điện thoại cập nhật | p95 10–25 ms |
+| Đua vịt 300 người tap 6–12 lần/giây | về đích ~13 s sau đèn xanh |
+| CPU server | trung bình 5–14%, đỉnh 48% của 1 core (lúc 300 người check-in trong 1 giây) |
+| RAM | ~110 MB |
+
+(Đo trên server cục bộ; mạng thật sẽ cộng thêm độ trễ đường truyền.)
 
 Bot giả lập sẽ check-in, gửi từ khoá, vote, đặt câu hỏi, upvote, đua vịt và gửi feedback theo slide hiện tại.
 
@@ -85,4 +116,6 @@ Trong trang admin → **Xuất dữ liệu (CSV)**: `checkins`, `words`, `votes`
 - Trước chương trình: vào admin → **Reset toàn bộ dữ liệu** (gõ `RESET`) để xoá dữ liệu tập dượt.
 - Khán giả được nhận diện qua localStorage; tải lại trang không mất check-in.
 - Mỗi người: tối đa 3 từ khoá, 1 phiếu vote, 3 câu hỏi/phút, 1 lượt feedback (gửi lại sẽ ghi đè).
-- Đã thử với 40+ khán giả đồng thời; kiến trúc 1 process phù hợp vài trăm người trong một hội trường.
+- Q&A luôn ẩn danh: tên người hỏi không được lưu (kể cả moderator và file CSV cũng không thấy).
+- Đua vịt: tối đa 14 tap/giây được tính (chống auto-click); `finishTaps` trong `config.json` chỉnh độ dài cuộc đua.
+- Đã kiểm thử tải với 300 khán giả đồng thời (xem bảng ở trên).

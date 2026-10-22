@@ -1,0 +1,23 @@
+# Render Blueprint: New + → Blueprint → chọn repo này. Chạy đúng 1 instance (state nằm trong bộ nhớ).
+services:
+  - type: web
+    name: townhall-ai-data
+    runtime: node
+    plan: starter          # 0.5 CPU / 512MB — đủ cho 300 người (xem README). "free" chỉ nên dùng để thử.
+    region: singapore
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ADMIN_KEY
+        generateValue: true  # Render tự sinh mật khẩu admin; xem ở tab Environment
+      - key: DATA_DIR
+        value: /var/data
+    # Ổ đĩa lưu dữ liệu (check-in, vote, Q&A, feedback, logo/ảnh nền đã upload) qua các lần restart/deploy.
+    disk:
+      name: townhall-data
+      mountPath: /var/data
+      sizeGB: 1

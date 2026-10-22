@@ -88,7 +88,7 @@ body { overflow: hidden; }
 
 /* race */
 .race-stage { flex: 1; position: relative; min-height: 0; border-radius: 24px; overflow: hidden; }
-.race-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.race-stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .race-overlay.dim { background: rgba(20,0,12,.55); }
 .race-overlay { position: absolute; inset: 0; transition: background .4s; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; }
 .countdown { font-size: 260px; font-weight: 900; text-shadow: 0 10px 60px rgba(0,0,0,.5); animation: beat 1s infinite; }
@@ -120,3 +120,38 @@ body { overflow: hidden; }
 .stars { color: #ffd43b; letter-spacing: 2px; font-size: 22px; }
 
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+
+/* race v2 */
+.race-stage { box-shadow: 0 20px 60px rgba(0,0,0,.35); border: 3px solid rgba(255,255,255,.25); }
+.board { top: auto; bottom: 86px; right: 18px; width: 340px; background: rgba(26,0,16,.72); }
+.board .r { display: grid; grid-template-columns: 24px 30px 1fr auto; gap: 10px; align-items: center; font-size: 19px; }
+.board .r .pos { color: var(--muted); }
+.board .r i { width: 30px; height: 30px; border-radius: 50%; color: #1a0010; font-style: normal; font-size: 13px; font-weight: 900; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+.board .r em { font-style: normal; color: #ffe066; font-size: 16px; }
+.timer { top: auto; bottom: 86px; left: 18px; background: rgba(26,0,16,.72); }
+.race-map { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 54px; display: flex; align-items: center; gap: 14px; padding: 0 18px; background: rgba(26,0,16,.72); }
+.race-map .flag { font-weight: 900; font-size: 15px; letter-spacing: 2px; }
+.race-map .track { position: relative; flex: 1; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(255,255,255,.2), rgba(255,111,181,.5)); }
+.race-map .dots i { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.8); transition: left .2s linear; }
+.race-map .dots i.lead { width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 3px solid #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); z-index: 2; }
+.lobby { display: flex; align-items: center; gap: 50px; padding: 36px 44px; border-radius: 28px; background: rgba(26,0,16,.78); border: 1px solid var(--line); pointer-events: auto; }
+.lobby-qr { width: 300px; height: 300px; background: #fff; border-radius: 20px; padding: 14px; }
+.lobby-qr svg { width: 100%; height: 100%; display: block; }
+.lobby-txt { text-align: left; }
+.lobby-txt .big { font-size: 150px; font-weight: 900; line-height: 1; background: linear-gradient(135deg, #fff, #ffd43b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lobby-txt .lbl { font-size: 36px; font-weight: 800; margin-bottom: 20px; }
+.lobby-txt .how { font-size: 24px; line-height: 1.6; color: #ffe3f1; }
+.lights { display: flex; gap: 28px; padding: 22px 32px; border-radius: 30px; background: rgba(20,0,12,.85); margin-bottom: 10px; }
+.lights span { width: 90px; height: 90px; border-radius: 50%; background: #3b0a2a; box-shadow: inset 0 6px 14px rgba(0,0,0,.6); transition: background .15s; }
+.lights span.on { background: radial-gradient(circle at 35% 35%, #ff8787, #e03131); box-shadow: 0 0 40px #ff2a2a; }
+.lights span.go { background: radial-gradient(circle at 35% 35%, #8ce99a, #2f9e44); box-shadow: 0 0 50px #40ff6a; }
+.countdown { font-size: 200px; }
+.win-title { font-size: 64px; font-weight: 900; text-shadow: 0 6px 30px rgba(0,0,0,.5); }
+.podium .p canvas { width: 240px; height: 170px; display: block; margin: 0 auto -20px; }
+.podium .p .name { margin-bottom: 8px; }
+
+/* Big panels sit over the animated particle layer: a live backdrop blur there costs a full-screen
+   re-blur every frame (very slow on projector laptops without a GPU). Use a tinted panel instead. */
+.poll-box, .qa-grid .feature, .qa-grid .item, .qr-card, .agenda, .stat, .race-stage .glass, .lobby {
+  backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(42, 0, 28, 0.62);
+}

@@ -25,7 +25,8 @@
   if (!adminKey) $('#hint').textContent = 'F: toàn màn hình';
   else $('#hint').textContent = 'F: toàn màn hình · ← → / clicker: chuyển slide';
 
-  socket.on('state', (s) => { if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; update(); });
+  socket.on('state', (s) => { if (!s.slides) return; // ignore the slim phone state sent before screen:join
+    if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; update(); });
   socket.on('reset', () => location.reload());
 
   function update() {
@@ -36,6 +37,8 @@
     if (renderedSlideId !== slide.id) {
       renderedSlideId = slide.id;
       stopRace();
+      clearTimeout(cloudTimer);
+      if (typeof WordCloud === 'function') WordCloud.stop?.();
       stage.innerHTML = '';
       const el = document.createElement('section');
       el.className = 'slide ' + slide.type;
@@ -98,6 +101,7 @@
         <div class="race-stage"><canvas id="river"></canvas>
           <div class="timer glass hidden" id="raceTimer"></div>
           <div class="board glass hidden" id="raceBoard"></div>
+          <div class="race-map glass hidden" id="raceMap"><span class="flag s">START</span><div class="track"><div class="dots"></div></div><span class="flag f">🏁</span></div>
           <div class="race-overlay" id="raceOverlay"></div></div>`;
       startRace();
     },
@@ -165,11 +169,11 @@
       const qs = S.questions;
       const feat = qs.find((q) => q.highlighted) || qs.find((q) => q.status === 'approved');
       $('#qaFeature', el).innerHTML = feat
-        ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— ${esc(feat.name)} · ▲ ${feat.upvotes}</div>`
+        ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— Câu hỏi ẩn danh · ▲ ${feat.upvotes}</div>`
         : `<div class="q" style="opacity:.7">Chưa có câu hỏi nào được duyệt.<br>Hãy gửi câu hỏi từ điện thoại nhé! 📱</div>`;
       const rest = qs.filter((q) => q !== feat).slice(0, 7);
       $('#qaList', el).innerHTML = rest.map((q) => `
-        <div class="item glass ${q.status}"><div><div class="t">${esc(q.text)}</div><div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div><div class="votes">▲ ${q.upvotes}</div></div>`).join('');
+        <div class="item glass ${q.status}"><div><div class="t">${esc(q.text)}</div><div class="by">${q.target ? '→ ' + esc(q.target) : 'Ẩn danh'}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div><div class="votes">▲ ${q.upvotes}</div></div>`).join('');
     },
     race(el) { raceState(S.race); },
     feedback(el) {
@@ -185,18 +189,23 @@
     const canvas = $('#cloud');
     if (!canvas || !words.length || typeof WordCloud !== 'function') return;
     const r = canvas.getBoundingClientRect();
+    if (r.width < 50 || r.height < 50) return;
     const dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = r.width * dpr; canvas.height = r.height * dpr;
     const max = words[0].count;
     const area = canvas.width * canvas.height;
     const base = Math.sqrt(area / Math.max(12, words.length * 2.2));
     const palette = ['#ffffff', '#ffd6ec', '#ff6fb5', '#ffa8d5', '#ffe066', '#fcc2d7', '#e599f7'];
+    // Weights are font sizes in px; wordcloud2's shrinkToFit scales them down until a word fits.
+    const size = (c) => Math.max(16 * dpr, Math.min(base * 1.1, base * (0.35 + 0.75 * (c / max))));
+    const sizeToCount = new Map();
+    WordCloud.stop?.();
     WordCloud(canvas, {
-      list: words.map((w) => [w.text, w.count]),
-      weightFactor: (c) => Math.max(14 * dpr, Math.min(base * 1.1, base * (0.35 + 0.75 * (c / max)))),
+      list: words.map((w) => { const px = size(w.count); sizeToCount.set(w.text, w.count); return [w.text, px]; }),
+      weightFactor: 1, minSize: 6 * dpr,
       fontFamily: '"Be Vietnam Pro", "Segoe UI", sans-serif',
-      fontWeight: (w, c) => (c >= max * 0.6 ? 900 : 700),
-      color: (w, c) => (c === max ? '#ffffff' : palette[(w.length + c) % palette.length]),
+      fontWeight: (w) => ((sizeToCount.get(w) || 0) >= max * 0.6 ? 900 : 700),
+      color: (w) => { const c = sizeToCount.get(w) || 0; return c === max ? '#ffffff' : palette[(w.length + c) % palette.length]; },
       backgroundColor: 'rgba(0,0,0,0)',
       rotateRatio: 0.15, rotationSteps: 2, gridSize: Math.round(8 * dpr), shrinkToFit: true, drawOutOfBound: false,
       shape: 'ellipse', ellipticity: 0.55,
@@ -204,81 +213,41 @@
   }
 
   // ------------------------------------------------------------ race view
-  let raceAnim = null;
-  let frame = { phase: 'lobby', ducks: [], t: 0 };
-  const shown = new Map(); // id -> displayed progress (smoothed)
+  let scene = null;
   let lastRace = null;
   let confettiDone = false;
-  socket.on('race:frame', (f) => { frame = f; });
+  let hudTimer = null;
+  let raceT = 0;
+  socket.on('race:frame', (f) => { raceT = f.t; if (scene) scene.setFrame(f); });
 
   function startRace() {
-    shown.clear(); confettiDone = false;
-    const canvas = $('#river');
-    const ctx = canvas.getContext('2d');
-    let tick = 0;
-    function loop() {
-      raceAnim = requestAnimationFrame(loop);
-      tick += 1;
-      const r = canvas.getBoundingClientRect();
-      const dpr = Math.min(2, devicePixelRatio || 1);
-      if (canvas.width !== Math.round(r.width * dpr)) { canvas.width = r.width * dpr; canvas.height = r.height * dpr; }
-      const W = canvas.width, H = canvas.height;
-      // river
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, 'rgba(40,120,200,.55)'); g.addColorStop(1, 'rgba(20,70,150,.7)');
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 2 * dpr;
-      for (let i = 0; i < 14; i++) { // moving wave dashes
-        const y = (i + .5) * H / 14; ctx.setLineDash([30 * dpr, 50 * dpr]); ctx.lineDashOffset = -tick * 2 * dpr - i * 17;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      }
-      ctx.setLineDash([]);
-      const startX = 90 * dpr, finishX = W - 120 * dpr;
-      // start & finish
-      ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(startX - 4 * dpr, 0, 4 * dpr, H);
-      const sq = 16 * dpr;
-      for (let y = 0; y < H; y += sq) for (let c = 0; c < 2; c++) { ctx.fillStyle = ((y / sq + c) % 2) ? '#fff' : '#111'; ctx.fillRect(finishX + c * sq, y, sq, sq); }
-
-      const ducks = frame.ducks;
-      const n = ducks.length;
-      if (!n) return;
-      const lanes = Math.min(n, n > 24 ? 16 : 12);
-      const laneH = H / lanes;
-      const size = Math.min(laneH * 0.32, 34 * dpr) * (n > 24 ? 0.8 : 1);
-      const order = [...ducks].sort((a, b) => b[3] - a[3]);
-      const top = new Set(order.slice(0, 8).map((d) => d[0]));
-      ducks.forEach((d, i) => {
-        const [id, name, color, progress] = d;
-        const cur = shown.has(id) ? shown.get(id) : progress;
-        const next = cur + (progress - cur) * 0.18;
-        shown.set(id, next);
-        const lane = i % lanes;
-        const sub = Math.floor(i / lanes);
-        const y = laneH * (lane + 0.55) + ((sub % 3) - 1) * size * 0.5;
-        const x = startX + (finishX - startX - size) * (next / 100);
-        drawDuck(ctx, x, y, size, color, tick * 0.15 + i, frame.phase === 'racing' ? Math.sin(tick * 0.6 + i) : 0);
-        if (n <= 24 || top.has(id)) {
-          ctx.font = `700 ${Math.round(Math.max(12 * dpr, size * 0.5))}px "Be Vietnam Pro", sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.lineWidth = 4 * dpr; ctx.strokeStyle = 'rgba(0,0,0,.55)';
-          ctx.strokeText(name, x, y - size * 1.1);
-          ctx.fillStyle = '#fff'; ctx.fillText(name, x, y - size * 1.1);
-        }
-      });
-      // leaderboard + timer while racing
-      const board = $('#raceBoard');
-      if (board && frame.phase === 'racing' && tick % 6 === 0) {
-        board.classList.remove('hidden');
-        board.innerHTML = '<h3>Dẫn đầu</h3>' + order.slice(0, 5).map((d, i) => `<div class="r">${['🥇', '🥈', '🥉', '4.', '5.'][i]} <i style="background:${d[2]}"></i><span>${esc(d[1])}</span></div>`).join('');
-        const t = $('#raceTimer');
-        t.classList.remove('hidden');
-        t.textContent = '⏱ ' + Math.max(0, frame.t / 1000).toFixed(1) + 's';
-      }
-    }
-    loop();
+    confettiDone = false;
+    scene = RaceScene.create($('#river'));
+    scene.start();
+    socket.emit('screen:join'); // ask for a fresh frame
+    clearInterval(hudTimer);
+    hudTimer = setInterval(hud, 200);
   }
-  function stopRace() { if (raceAnim) cancelAnimationFrame(raceAnim); raceAnim = null; }
+  function stopRace() { if (scene) scene.stop(); scene = null; clearInterval(hudTimer); }
+
+  // Leaderboard, timer and mini-map over the river.
+  function hud() {
+    if (!scene || !S || S.slide.type !== 'race') return;
+    const racing = S.race.phase === 'racing';
+    const st = scene.standings();
+    const board = $('#raceBoard'), timer = $('#raceTimer'), map = $('#raceMap');
+    board.classList.toggle('hidden', !racing);
+    timer.classList.toggle('hidden', !racing);
+    map.classList.toggle('hidden', S.race.phase === 'lobby' || !st.length);
+    if (racing) {
+      board.innerHTML = '<h3>Dẫn đầu</h3>' + st.slice(0, 5).map((d, i) => `<div class="r"><b class="pos">${i + 1}</b><i style="background:${d.color}">${d.no}</i><span>${esc(d.name)}</span><em>${Math.round(d.p)}%</em></div>`).join('');
+      timer.textContent = '⏱ ' + Math.max(0, raceT / 1000).toFixed(1) + 's';
+    }
+    if (!map.classList.contains('hidden')) {
+      const top = new Set(st.slice(0, 3).map((d) => d.id));
+      map.querySelector('.dots').innerHTML = st.slice().reverse().map((d) => `<i class="${top.has(d.id) ? 'lead' : ''}" style="left:${d.p}%;background:${d.color}"></i>`).join('');
+    }
+  }
 
   let cdTimer = null;
   function raceState(r) {
@@ -289,30 +258,45 @@
     lastRace = sig;
     clearInterval(cdTimer);
     ov.classList.toggle('dim', r.phase === 'finished' || r.phase === 'lobby');
-    if (r.phase !== 'racing') { $('#raceBoard').classList.add('hidden'); $('#raceTimer').classList.add('hidden'); }
     if (r.phase === 'lobby') {
-      confettiDone = false; shown.clear();
-      const ducks = frame.ducks || [];
-      ov.innerHTML = `<div style="font-size:54px;font-weight:900;text-shadow:0 6px 30px rgba(0,0,0,.4)">${r.playerCount} chú vịt đã xuống nước</div>
-        <div style="font-size:26px;margin-top:10px">📱 Mở điện thoại → bấm <b>“Tham gia đua”</b></div>
-        <div class="lobby-ducks">${ducks.slice(-40).map((d) => `<span style="background:${d[2]}">${esc(d[1])}</span>`).join('')}</div>`;
+      confettiDone = false;
+      if (scene) scene.reset();
+      ov.innerHTML = `<div class="lobby">
+          <div class="lobby-qr">${join.svg}</div>
+          <div class="lobby-txt"><div class="big">${r.playerCount}</div><div class="lbl">chú vịt đã xuống nước 🦆</div>
+          <div class="how">📱 Quét QR → bấm <b>“Tham gia đua”</b><br>👆 Khi có hiệu lệnh: <b>tap liên tục</b> để vịt bơi nhanh!</div></div></div>`;
     } else if (r.phase === 'countdown') {
+      let shownLeft = null;
       const draw = () => {
-        const left = Math.ceil((r.localEnd - Date.now()) / 1000);
-        ov.innerHTML = `<div class="countdown" key="${left}">${left > 0 ? left : 'GO!'}</div>`;
+        const left = Math.max(0, Math.ceil((r.localEnd - Date.now()) / 1000));
+        if (left === shownLeft) return;
+        shownLeft = left;
+        const lit = left >= 3 ? 1 : left === 2 ? 2 : 3;
+        ov.innerHTML = `<div class="lights glass">${[0, 1, 2].map((i) => `<span class="${left === 0 ? 'go' : i < lit ? 'on' : ''}"></span>`).join('')}</div>
+          <div class="countdown">${left > 0 ? left : 'GO!'}</div>`;
       };
-      draw(); cdTimer = setInterval(draw, 250);
+      draw(); cdTimer = setInterval(draw, 100);
     } else if (r.phase === 'racing') {
       ov.innerHTML = '';
     } else if (r.phase === 'finished') {
       const [a, b, c] = r.finishOrder;
-      const block = (p, k) => p ? `<div class="p p${k}"><div class="name">${esc(p.name)}</div><div class="block">${k}</div></div>` : '';
-      ov.innerHTML = `<div style="font-size:60px;font-weight:900;text-shadow:0 6px 30px rgba(0,0,0,.5)">🏆 Chúc mừng!</div>
+      const block = (p, k) => p ? `<div class="p p${k}"><canvas width="240" height="170" data-color="${p.color}" data-no="${p.no || ''}"></canvas><div class="name">${esc(p.name)}</div><div class="block">${k}</div></div>` : '';
+      ov.innerHTML = `<div class="win-title">🏆 Chúc mừng nhà vô địch!</div>
         <div class="podium">${block(b, 2)}${block(a, 1)}${block(c, 3)}</div>`;
+      ov.querySelectorAll('.podium canvas').forEach((cv, i) => {
+        const ctx = cv.getContext('2d');
+        let t = i;
+        (function f() {
+          if (!cv.isConnected) return;
+          ctx.clearRect(0, 0, 240, 170);
+          drawDuck(ctx, 115, 110, 58, cv.dataset.color, { bob: t += 0.1, no: Number(cv.dataset.no) });
+          requestAnimationFrame(f);
+        })();
+      });
       if (!confettiDone) { confettiDone = true; confetti(); }
     }
   }
-  setInterval(() => { if (S && S.slide.type === 'race') { lastRace = null; raceState(S.race); } }, 1500);
+  setInterval(() => { if (S && S.slide.type === 'race' && S.race.phase === 'lobby') { lastRace = null; raceState(S.race); } }, 1500);
 
   function confetti() {
     const c = document.createElement('canvas');

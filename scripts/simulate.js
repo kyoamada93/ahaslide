@@ -14,6 +14,7 @@ for (let i = 0; i < N; i++) {
     const s = io(URL, { transports: ['websocket'] });
     const me = { done: new Set(), tapper: null, skill: 3 + Math.random() * 8 };
     s.on('connect', () => s.emit('checkin', { name: `${pick(NAMES)} ${i + 1}`, team: pick(['Data Platform', 'AI Lab', 'Risk', 'Growth']) }, () => {}));
+    s.on('me', (m) => { me.duck = m.duck; });
     s.on('state', (st) => {
       const sl = st.slide;
       const once = (k, fn) => { if (!me.done.has(k)) { me.done.add(k); setTimeout(fn, 300 + Math.random() * 4000); } };
@@ -24,9 +25,13 @@ for (let i = 0; i < N; i++) {
         st.questions.forEach((q) => { if (Math.random() < 0.3) once('u' + q.id, () => s.emit('qa:upvote', q.id, () => {})); });
       }
       if (sl.type === 'race') {
-        if (st.race.phase === 'lobby') { me.done.delete('r'); once('rj', () => s.emit('race:join', () => {})); }
-        if (st.race.phase === 'racing' && !me.tapper) me.tapper = setInterval(() => s.emit('race:tap', Math.random() < me.skill / 10 ? 1 : 0), 100);
-        if (st.race.phase !== 'racing' && me.tapper) { clearInterval(me.tapper); me.tapper = null; me.done.delete('rj'); }
+        if (st.race.phase === 'lobby' && !me.duck && !me.joining) {
+          me.joining = true;
+          setTimeout(() => s.emit('race:join', () => { me.joining = false; }), 300 + Math.random() * 3000);
+        }
+        // like the real phone: taps batched every 250ms
+        if (st.race.phase === 'racing' && !me.tapper) me.tapper = setInterval(() => s.emit('race:tap', Math.round(me.skill * 0.25 + Math.random() - 0.5)), 250);
+        if (st.race.phase !== 'racing' && me.tapper) { clearInterval(me.tapper); me.tapper = null; }
       }
       if (sl.type === 'feedback') once('f', () => s.emit('feedback:submit', { overall: 4 + (Math.random() < 0.6 ? 1 : 0), content: 4, organization: 5, suggestion: 'Thêm demo thực tế' }, () => {}));
     });

@@ -124,7 +124,7 @@ function raceView() {
     startedAt: r.startedAt,
     endedAt: r.endedAt,
     playerCount: Object.keys(r.players).length,
-    finishOrder: r.finishOrder.map((id) => ({ id, name: r.players[id]?.name, color: r.players[id]?.color })),
+    finishOrder: r.finishOrder.map((id) => ({ id, name: r.players[id]?.name, color: r.players[id]?.color, no: r.players[id]?.no })),
     maxDurationSec: slideById.race?.maxDurationSec || 60,
   };
 }
@@ -136,6 +136,26 @@ function feedbackSummary() {
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
   };
   return { count: list.length, overall: avg('overall'), content: avg('content'), organization: avg('organization') };
+}
+
+function approvedQuestions() {
+  return state.questions
+    .filter((q) => q.status === 'approved' || q.status === 'answered')
+    .map(publicQuestion)
+    .sort((a, b) => (b.highlighted - a.highlighted) || (a.status === 'answered') - (b.status === 'answered') || b.upvotes - a.upvotes || a.createdAt - b.createdAt);
+}
+
+// Phones get a slim view: no word list, names or slide list (300 phones x several updates/s adds up).
+function audienceState() {
+  const slide = currentSlide();
+  const view = {
+    eventTitle: config.eventTitle, eventSubtitle: config.eventSubtitle, qaTargets: config.qaTargets,
+    slideIndex: state.slideIndex, slide,
+  };
+  if (slide.type === 'poll') view.poll = pollResults(slide.id);
+  if (slide.type === 'race') view.race = raceView();
+  if (slide.type === 'qa') view.questions = approvedQuestions().slice(0, 60);
+  return view;
 }
 
 function publicState() {
@@ -150,10 +170,7 @@ function publicState() {
     slide,
     checkedIn: Object.keys(state.users).length,
     recentNames: Object.values(state.users).sort((a, b) => b.checkedInAt - a.checkedInAt).slice(0, 30).map((u) => u.name),
-    questions: state.questions
-      .filter((q) => q.status === 'approved' || q.status === 'answered')
-      .map(publicQuestion)
-      .sort((a, b) => (b.highlighted - a.highlighted) || (a.status === 'answered') - (b.status === 'answered') || b.upvotes - a.upvotes || a.createdAt - b.createdAt),
+    questions: approvedQuestions(),
   };
   if (slide.type === 'wordcloud') view.words = wordFreq(slide.id);
   if (slide.type === 'poll') view.poll = pollResults(slide.id);
@@ -165,7 +182,7 @@ function publicState() {
 function adminState() {
   return {
     users: Object.values(state.users).sort((a, b) => a.checkedInAt - b.checkedInAt),
-    questions: state.questions.map((q) => ({ ...publicQuestion(q), userId: q.userId })),
+    questions: state.questions.map(publicQuestion),
     words: Object.fromEntries(slides.filter((s) => s.type === 'wordcloud').map((s) => [s.id, wordFreq(s.id)])),
     hiddenWords: state.hiddenWords,
     polls: Object.fromEntries(slides.filter((s) => s.type === 'poll').map((s) => [s.id, pollResults(s.id)])),
@@ -190,7 +207,7 @@ function myState(userId) {
     if (q.userId === userId) mine.questions.push({ id: q.id, text: q.text, status: q.status });
   }
   const p = state.race.players[userId];
-  mine.duck = p ? { color: p.color, rank: p.rank || null } : null;
+  mine.duck = p ? { color: p.color, no: p.no, rank: p.rank || null } : null;
   return mine;
 }
 
@@ -255,7 +272,8 @@ function lanIp() {
   return 'localhost';
 }
 function joinUrl(req) {
-  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, '');
+  const fixed = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+  if (fixed) return fixed.replace(/\/$/, '');
   const host = req.get('host') || '';
   if (host && !/^(localhost|127\.|\[::1\])/.test(host)) {
     const proto = req.get('x-forwarded-proto') || req.protocol;
@@ -263,6 +281,22 @@ function joinUrl(req) {
   }
   return `http://${lanIp()}:${PORT}`;
 }
+// Health + load metrics (CPU % and event-loop lag since the previous call).
+const loopDelay = require('perf_hooks').monitorEventLoopDelay({ resolution: 10 });
+loopDelay.enable();
+let lastCpu = process.cpuUsage(), lastCpuAt = Date.now();
+app.get('/healthz', (_req, res) => {
+  const m = process.memoryUsage();
+  const cpu = process.cpuUsage(lastCpu), now = Date.now();
+  const cpuPct = ((cpu.user + cpu.system) / 1000 / Math.max(1, now - lastCpuAt)) * 100;
+  lastCpu = process.cpuUsage(); lastCpuAt = now;
+  const lagP99 = loopDelay.percentile(99) / 1e6;
+  loopDelay.reset();
+  res.json({
+    ok: true, clients: io.engine.clientsCount, users: Object.keys(state.users).length,
+    rssMB: Math.round(m.rss / 1048576), cpuPct: Math.round(cpuPct), loopLagP99ms: Math.round(lagP99), uptimeSec: Math.round(process.uptime()),
+  });
+});
 app.get('/api/join', async (req, res) => {
   const url = joinUrl(req);
   const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#1a0010', light: '#ffffff' } });
@@ -296,7 +330,7 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
       return sendCsv(res, 'votes', ['slide', 'option', 'votes'], rows);
     }
     case 'questions':
-      return sendCsv(res, 'questions', ['name', 'target', 'question', 'status', 'upvotes', 'created_at'], state.questions.map((q) => [q.name, q.target, q.text, q.status, q.upvotes.length, t(q.createdAt)]));
+      return sendCsv(res, 'questions', ['target', 'question', 'status', 'upvotes', 'created_at'], state.questions.map((q) => [q.target, q.text, q.status, q.upvotes.length, t(q.createdAt)]));
     case 'feedback':
       return sendCsv(res, 'feedback', ['name', 'overall', 'content', 'organization', 'liked', 'suggestion', 'next_topics', 'at'], Object.values(state.feedback).map((f) => [f.anonymous ? '' : f.name, f.overall, f.content, f.organization, f.liked, f.suggestion, f.nextTopics, t(f.at)]));
     case 'race':
@@ -307,15 +341,34 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
 });
 
 // ---------------------------------------------------------------- broadcast
-let broadcastTimer = null;
-function broadcast() {
+let screenTimer = null;
+let audienceTimer = null;
+// urgent = slide or race-phase change: everyone must see it now, so skip the throttle.
+function broadcast(urgent = false) {
   persist();
-  if (broadcastTimer) return;
-  broadcastTimer = setTimeout(() => {
-    broadcastTimer = null;
-    io.emit('state', publicState());
+  if (urgent) {
+    clearTimeout(screenTimer); clearTimeout(audienceTimer);
+    screenTimer = audienceTimer = null;
+    io.to('screen').to('admin').emit('state', publicState());
     io.to('admin').emit('admin', adminState());
-  }, 120);
+    io.to('aud').emit('state', audienceState());
+    return;
+  }
+  if (!screenTimer) {
+    screenTimer = setTimeout(() => {
+      screenTimer = null;
+      io.to('screen').to('admin').emit('state', publicState());
+      io.to('admin').emit('admin', adminState());
+    }, 150);
+  }
+  if (!audienceTimer) {
+    // ~150ms for a small room, up to ~0.8s with several hundred phones.
+    const delay = Math.min(800, 150 + io.engine.clientsCount * 2);
+    audienceTimer = setTimeout(() => {
+      audienceTimer = null;
+      io.to('aud').emit('state', audienceState());
+    }, delay);
+  }
 }
 const meTimers = new Map();
 function pushMe(userId) {
@@ -330,7 +383,7 @@ function pushAllMe() {
 }
 
 // ---------------------------------------------------------------- race engine
-const tapBuckets = new Map(); // userId -> taps pending this tick
+const tapBuckets = new Map(); // userId -> taps received but not yet applied
 let raceTick = null;
 const TICK_MS = 100;
 
@@ -339,7 +392,7 @@ function startRace() {
   if (r.phase !== 'lobby' || !Object.keys(r.players).length) return false;
   r.phase = 'countdown';
   r.countdownEnd = Date.now() + 3500;
-  for (const p of Object.values(r.players)) Object.assign(p, { progress: 0, rank: null, finishedAt: 0, taps: 0 });
+  for (const p of Object.values(r.players)) Object.assign(p, { progress: 0, rank: null, finishedAt: 0, taps: 0, budget: 0 });
   r.finishOrder = [];
   tapBuckets.clear();
   clearInterval(raceTick);
@@ -356,17 +409,22 @@ function tickRace() {
       r.phase = 'racing';
       r.startedAt = now;
       tapBuckets.clear();
-      broadcast();
+      broadcast(true);
     }
     return;
   }
   if (r.phase !== 'racing') return;
   const finishTaps = cfg.finishTaps || 160;
-  const maxPerTick = Math.ceil(((cfg.maxTapsPerSecond || 14) * TICK_MS) / 1000);
+  // Token bucket: at most maxTapsPerSecond taps count, however the client batches them.
+  const perTick = ((cfg.maxTapsPerSecond || 14) * TICK_MS) / 1000;
   const step = 100 / finishTaps;
   for (const [id, p] of Object.entries(r.players)) {
     if (p.finishedAt) continue;
-    const taps = Math.min(tapBuckets.get(id) || 0, maxPerTick);
+    p.budget = Math.min(perTick * 3, (p.budget || 0) + perTick);
+    const pending = Math.min(tapBuckets.get(id) || 0, perTick * 4);
+    const taps = Math.min(pending, Math.floor(p.budget));
+    p.budget -= taps;
+    if (pending - taps > 0) tapBuckets.set(id, pending - taps); else tapBuckets.delete(id);
     p.taps += taps;
     // Taps drive the duck; a little current keeps idle ducks drifting.
     p.progress = Math.min(100, p.progress + taps * step * (0.85 + Math.random() * 0.3) + 0.02);
@@ -377,7 +435,6 @@ function tickRace() {
       pushMe(id);
     }
   }
-  tapBuckets.clear();
   const total = Object.keys(r.players).length;
   const podium = Math.min(cfg.podium || 3, total);
   const timedOut = now - r.startedAt > (cfg.maxDurationSec || 60) * 1000;
@@ -395,7 +452,7 @@ function tickRace() {
       podium: r.finishOrder.slice(0, Math.max(3, podium)).map((id) => ({ name: r.players[id].name, team: state.users[id]?.team || '' })),
     });
     pushAllMe();
-    broadcast();
+    broadcast(true);
   }
   emitRaceFrame();
 }
@@ -403,10 +460,10 @@ function tickRace() {
 let lastAudienceFrame = 0;
 function emitRaceFrame() {
   const r = state.race;
-  const ducks = Object.entries(r.players).map(([id, p]) => [id, p.name, p.color, Math.round(p.progress * 10) / 10, p.rank || 0]);
-  io.to('screen').to('admin').emit('race:frame', { phase: r.phase, ducks, t: Date.now() - r.startedAt });
+  const ducks = Object.entries(r.players).map(([id, p]) => [id, p.name, p.color, Math.round(p.progress * 10) / 10, p.rank || 0, p.no || 0]);
+  io.to('screen').emit('race:frame', { phase: r.phase, ducks, t: Date.now() - r.startedAt });
   const now = Date.now();
-  if (now - lastAudienceFrame < 250) return;
+  if (now - lastAudienceFrame < 400) return;
   lastAudienceFrame = now;
   const sorted = [...ducks].sort((a, b) => (a[4] || 1e9) - (b[4] || 1e9) || b[3] - a[3]);
   sorted.forEach(([id, , , progress, rank], i) => io.to('u:' + id).emit('race:me', { progress, rank, position: i + 1, total: sorted.length }));
@@ -428,15 +485,23 @@ io.on('connection', (socket) => {
   let isAdmin = false;
   const ack = (cb, payload) => typeof cb === 'function' && cb(payload);
 
-  socket.emit('state', publicState());
+  socket.join('aud');
+  socket.emit('state', audienceState());
 
-  socket.on('screen:join', () => { socket.join('screen'); emitRaceFrame(); });
+  socket.on('screen:join', () => {
+    socket.leave('aud');
+    socket.join('screen');
+    socket.emit('state', publicState());
+    emitRaceFrame();
+  });
 
   socket.on('admin:auth', (key, cb) => {
     if (key !== ADMIN_KEY) return ack(cb, { ok: false });
     isAdmin = true;
+    socket.leave('aud');
     socket.join('admin');
     ack(cb, { ok: true });
+    socket.emit('state', publicState());
     socket.emit('admin', adminState());
   });
 
@@ -496,7 +561,7 @@ io.on('connection', (socket) => {
     broadcast();
   });
 
-  socket.on('qa:ask', ({ text, target, anonymous } = {}, cb) => {
+  socket.on('qa:ask', ({ text, target } = {}, cb) => {
     if (!needUser(cb)) return;
     const t = clean(text, 300);
     if (t.length < 3) return ack(cb, { ok: false, error: 'Câu hỏi quá ngắn' });
@@ -504,7 +569,8 @@ io.on('connection', (socket) => {
       return ack(cb, { ok: false, error: 'Bạn gửi hơi nhanh, đợi 1 phút nhé' });
     }
     state.questions.push({
-      id: newId(), userId, name: anonymous ? 'Ẩn danh' : state.users[userId].name, text: t,
+      // Q&A is always anonymous: the asker's name is never stored with the question.
+      id: newId(), userId, name: 'Ẩn danh', text: t,
       target: config.qaTargets.includes(target) ? target : config.qaTargets[0],
       status: 'pending', highlighted: false, upvotes: [], createdAt: Date.now(),
     });
@@ -530,7 +596,7 @@ io.on('connection', (socket) => {
     if (!r.players[userId]) {
       if (r.phase !== 'lobby') return ack(cb, { ok: false, error: 'Cuộc đua đang diễn ra, đợi lượt sau nhé' });
       const n = Object.keys(r.players).length;
-      r.players[userId] = { name: state.users[userId].name, color: DUCK_COLORS[n % DUCK_COLORS.length], progress: 0, rank: null, finishedAt: 0, taps: 0 };
+      r.players[userId] = { no: n + 1, name: state.users[userId].name, color: DUCK_COLORS[n % DUCK_COLORS.length], progress: 0, rank: null, finishedAt: 0, taps: 0, budget: 0 };
     }
     ack(cb, { ok: true });
     pushMe(userId);
@@ -621,7 +687,7 @@ io.on('connection', (socket) => {
         return ack(cb, { ok: false, error: 'unknown action' });
     }
     ack(cb, { ok: true });
-    broadcast();
+    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'qa:highlight'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));

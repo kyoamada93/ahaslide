@@ -62,7 +62,7 @@
       <h2>Đặt câu hỏi${target ? ' cho ' + esc(target) : ''}</h2>
       <textarea id="qText" maxlength="300" placeholder="Câu hỏi của bạn…"></textarea>
       ${target ? `<input type="hidden" id="qTarget" value="${esc(target)}">` : `<label for="qTarget">Gửi tới</label><select id="qTarget">${S.qaTargets.map((t) => `<option>${esc(t)}</option>`).join('')}</select>`}
-      <label class="check"><input type="checkbox" id="qAnon"> Gửi ẩn danh</label>
+      <p class="muted" style="font-size:13px;margin-top:8px">🔒 Câu hỏi luôn được gửi <b>ẩn danh</b>.</p>
       <button class="btn block" data-act="ask">Gửi câu hỏi</button>
       <p class="muted" style="font-size:13px;margin-top:10px">Câu hỏi sẽ hiển thị sau khi moderator duyệt.</p>
     </div>`;
@@ -147,7 +147,7 @@
         <div class="kick">Câu hỏi đã duyệt · ${list.length}</div>
         <h2>Upvote câu hỏi bạn quan tâm</h2>
         ${list.length ? list.map((q) => `
-          <div class="qitem"><div><div class="t">${q.highlighted ? '🎤 ' : ''}${esc(q.text)}</div><div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div>
+          <div class="qitem"><div><div class="t">${q.highlighted ? '🎤 ' : ''}${esc(q.text)}</div><div class="by">${q.target ? '→ ' + esc(q.target) : 'Ẩn danh'}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div>
             <button class="up ${up.has(q.id) ? 'on' : ''}" data-act="upvote" data-id="${q.id}" ${q.status === 'answered' ? 'disabled' : ''}>▲ ${q.upvotes}</button></div>`).join('') : '<p class="muted">Chưa có câu hỏi nào được duyệt.</p>'}
       </div>
       ${myQuestions()}`;
@@ -171,7 +171,7 @@
           <button class="btn block" data-act="race-join">Tham gia đua 🦆</button></div>`;
       }
       return `<div class="card glass center"><div class="kick">Bạn đã vào đường đua</div><canvas class="duck-pre" id="duckPre" width="320" height="220"></canvas>
-        <h2>Vịt của bạn đã sẵn sàng!</h2><p class="muted">Chờ presenter bấm bắt đầu<span class="wait-dots"></span><br>Chuẩn bị ngón tay nhé 👆</p></div>`;
+        <h2>Vịt số ${duck.no || ''} của bạn đã sẵn sàng!</h2><p class="muted">Chờ presenter bấm bắt đầu<span class="wait-dots"></span><br>Chuẩn bị ngón tay nhé 👆</p></div>`;
     },
 
     feedback: () => {
@@ -201,7 +201,7 @@
       let t = 0;
       const color = ME.duck?.color || '#FFD43B';
       cancelAnimationFrame(pre._raf);
-      (function f() { if (!pre.isConnected) return; ctx.clearRect(0, 0, 320, 220); drawDuck(ctx, 150, 120, 60, color, t += 0.08); pre._raf = requestAnimationFrame(f); })();
+      (function f() { if (!pre.isConnected) return; ctx.clearRect(0, 0, 320, 220); drawDuck(ctx, 150, 130, 62, color, { bob: t += 0.08, no: ME.duck?.no }); pre._raf = requestAnimationFrame(f); })();
     }
     const w = $('#wInput');
     if (w) w.addEventListener('keydown', (e) => { if (e.key === 'Enter') act('word'); });
@@ -239,7 +239,7 @@
       case 'ask': {
         const text = $('#qText').value.trim();
         if (text.length < 3) return toast('Câu hỏi quá ngắn');
-        res = await emit('qa:ask', { text, target: $('#qTarget').value, anonymous: $('#qAnon').checked });
+        res = await emit('qa:ask', { text, target: $('#qTarget').value });
         if (res.ok) { $('#qText').value = ''; toast('Đã gửi, chờ moderator duyệt nhé 🙌'); }
         break;
       }
@@ -268,57 +268,121 @@
   let myRace = { progress: 0, position: 0, total: 0, rank: 0 };
   let zoneRaf = null;
   let cdInt = null;
+  const tapTimes = []; // timestamps of recent taps, for the speed meter
+  const ripples = [];
   socket.on('race:me', (m) => { myRace = m; if (zone) updateZone(); });
-  setInterval(() => { if (pendingTaps > 0) { socket.emit('race:tap', pendingTaps); pendingTaps = 0; } }, 100);
+  setInterval(() => { if (pendingTaps > 0) { socket.emit('race:tap', pendingTaps); pendingTaps = 0; } }, 250);
+
+  const tapRate = () => { const now = performance.now(); while (tapTimes.length && now - tapTimes[0] > 1000) tapTimes.shift(); return tapTimes.length; };
 
   function raceOverlay() {
     const active = S?.slide.type === 'race' && ME?.duck && (S.race.phase === 'countdown' || S.race.phase === 'racing');
     if (!active) { if (zone) { zone.remove(); zone = null; cancelAnimationFrame(zoneRaf); clearInterval(cdInt); } return; }
-    if (!zone) {
-      zone = document.createElement('div');
-      zone.className = 'tap-zone';
-      zone.innerHTML = `<div class="count hidden" id="zCount"></div><canvas id="zDuck" width="600" height="400"></canvas>
-        <div class="tap-hint" id="zHint">TAP! TAP! TAP!</div><div class="prog"><i id="zProg"></i></div><div class="rank" id="zRank"></div>`;
-      document.body.appendChild(zone);
-      zone.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (S.race.phase !== 'racing') return;
-        pendingTaps += 1;
-        zone.classList.add('bump'); setTimeout(() => zone && zone.classList.remove('bump'), 60);
-        if (navigator.vibrate) navigator.vibrate(8);
-      });
-      zone.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-      zone.addEventListener('contextmenu', (e) => e.preventDefault());
-      const ctx = zone.querySelector('#zDuck').getContext('2d');
-      let t = 0;
-      (function f() {
-        ctx.clearRect(0, 0, 600, 400);
-        const racing = S.race.phase === 'racing';
-        drawDuck(ctx, 280, 220, 120, ME.duck?.color || '#FFD43B', t += racing ? 0.3 : 0.08, racing ? Math.sin(t * 2) : 0);
-        zoneRaf = requestAnimationFrame(f);
-      })();
-      clearInterval(cdInt);
-      cdInt = setInterval(updateZone, 200);
-    }
+    if (!zone) buildZone();
     updateZone();
+  }
+
+  function buildZone() {
+    zone = document.createElement('div');
+    zone.className = 'tap-zone';
+    zone.innerHTML = `<canvas id="zWater"></canvas>
+      <div class="z-top">
+        <div class="z-pos"><b id="zPos">–</b><span id="zTotal"></span></div>
+        <div class="z-track"><i id="zProg"></i><span id="zMini">🦆</span><em>🏁</em></div>
+      </div>
+      <div class="z-center"><div class="z-lights hidden" id="zLights"><span></span><span></span><span></span></div><div class="count hidden" id="zCount"></div></div>
+      <div class="z-bottom">
+        <div class="tap-hint" id="zHint">TAP! TAP! TAP!</div>
+        <div class="z-speed"><i id="zSpeed"></i></div><div class="z-speed-lbl" id="zSpeedLbl">0 tap/s</div>
+      </div>`;
+    document.body.appendChild(zone);
+    zone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (S.race.phase !== 'racing' || myRace.rank) return;
+      pendingTaps += 1;
+      tapTimes.push(performance.now());
+      ripples.push({ x: e.clientX, y: e.clientY, r: 0, a: 1 });
+      if (navigator.vibrate) navigator.vibrate(6);
+    });
+    zone.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    zone.addEventListener('contextmenu', (e) => e.preventDefault());
+    const cv = zone.querySelector('#zWater');
+    const ctx = cv.getContext('2d');
+    let t = 0, flow = 0, speed = 0;
+    const drops = [];
+    (function f() {
+      zoneRaf = requestAnimationFrame(f);
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      const W = innerWidth * dpr, H = innerHeight * dpr;
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+      const racing = S.race.phase === 'racing' && !myRace.rank;
+      speed += ((racing ? Math.min(1, tapRate() / 10) : 0) - speed) * 0.12;
+      t += 1; flow += (1.5 + speed * 14) * dpr;
+      // water
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#4a0532'); g.addColorStop(0.18, '#1c7ed6'); g.addColorStop(1, '#0b4f8a');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 3 * dpr; ctx.lineCap = 'round';
+      for (let r = 0; r < 16; r++) {
+        const y = H * 0.2 + (r + 0.5) * (H * 0.8) / 16;
+        const off = (flow * (0.6 + (r % 3) * 0.2) + r * 53) % (140 * dpr);
+        for (let x = -off; x < W + 40; x += 140 * dpr) { ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 20 * dpr, y - 6 * dpr, x + 40 * dpr, y); ctx.stroke(); }
+      }
+      // speed streaks
+      if (speed > 0.35) {
+        ctx.strokeStyle = `rgba(255,255,255,${(speed - 0.35) * 0.6})`; ctx.lineWidth = 2 * dpr;
+        for (let k = 0; k < 14; k++) {
+          const y = H * 0.25 + ((k * 0.618) % 1) * H * 0.7;
+          const x = W - ((flow * 2 + k * 170 * dpr) % (W + 200 * dpr));
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 120 * dpr * speed, y); ctx.stroke();
+        }
+      }
+      // duck + splashes
+      const s = Math.min(W, H) * 0.17;
+      const dx = W * 0.5, dy = H * 0.48;
+      if (racing && speed > 0.3 && Math.random() < speed) drops.push({ x: dx - s * 0.9, y: dy + s * 0.4, vx: -(2 + Math.random() * 4) * dpr, vy: -(2 + Math.random() * 4) * dpr, a: 1 });
+      for (let k = drops.length - 1; k >= 0; k--) {
+        const p = drops[k]; p.x += p.vx; p.y += p.vy; p.vy += 0.35 * dpr; p.a -= 0.03;
+        if (p.a <= 0) { drops.splice(k, 1); continue; }
+        ctx.fillStyle = `rgba(255,255,255,${p.a})`; ctx.beginPath(); ctx.arc(p.x, p.y, 4 * dpr, 0, 7); ctx.fill();
+      }
+      drawDuck(ctx, dx, dy, s, ME.duck?.color || '#FFD43B', { bob: t * (0.08 + speed * 0.25), no: ME.duck?.no, speed, flap: racing ? Math.sin(t * (0.3 + speed)) : 0 });
+      // tap ripples
+      for (let k = ripples.length - 1; k >= 0; k--) {
+        const r = ripples[k]; r.r += 6 * dpr; r.a -= 0.05;
+        if (r.a <= 0) { ripples.splice(k, 1); continue; }
+        ctx.strokeStyle = `rgba(255,255,255,${r.a})`; ctx.lineWidth = 4 * dpr;
+        ctx.beginPath(); ctx.arc(r.x * dpr, r.y * dpr, r.r, 0, 7); ctx.stroke();
+      }
+    })();
+    clearInterval(cdInt);
+    cdInt = setInterval(updateZone, 120);
   }
 
   function updateZone() {
     if (!zone) return;
     const r = S.race;
     const cnt = zone.querySelector('#zCount');
+    const lights = zone.querySelector('#zLights');
     if (r.phase === 'countdown') {
-      const left = Math.ceil((r.localEnd - Date.now()) / 1000);
-      cnt.classList.remove('hidden');
+      const left = Math.max(0, Math.ceil((r.localEnd - Date.now()) / 1000));
+      cnt.classList.remove('hidden'); lights.classList.remove('hidden');
       cnt.textContent = left > 0 ? left : 'GO!';
-      zone.querySelector('#zHint').textContent = 'Chuẩn bị…';
-      zone.querySelector('#zDuck').classList.add('hidden');
+      const lit = left >= 3 ? 1 : left === 2 ? 2 : 3;
+      lights.querySelectorAll('span').forEach((sp, i) => { sp.className = left === 0 ? 'go' : i < lit ? 'on' : ''; });
+      zone.querySelector('#zHint').textContent = 'Chuẩn bị ngón tay… 👆';
     } else {
-      cnt.classList.add('hidden');
-      zone.querySelector('#zDuck').classList.remove('hidden');
+      cnt.classList.add('hidden'); lights.classList.add('hidden');
       zone.querySelector('#zHint').textContent = myRace.rank ? `🏁 Về đích hạng #${myRace.rank}!` : 'TAP! TAP! TAP!';
     }
-    zone.querySelector('#zProg').style.width = (myRace.progress || 0) + '%';
-    zone.querySelector('#zRank').textContent = myRace.total ? `Vị trí ${myRace.position}/${myRace.total}` : '';
+    const p = myRace.progress || 0;
+    zone.querySelector('#zProg').style.width = p + '%';
+    zone.querySelector('#zMini').style.left = p + '%';
+    zone.querySelector('#zPos').textContent = myRace.total ? '#' + myRace.position : '–';
+    zone.querySelector('#zTotal').textContent = myRace.total ? ' / ' + myRace.total : '';
+    const rate = tapRate();
+    zone.querySelector('#zSpeed').style.width = Math.min(100, rate * 7) + '%';
+    zone.querySelector('#zSpeedLbl').textContent = rate >= 8 ? `🔥 BOOST! ${rate} tap/s` : `${rate} tap/s`;
+    zone.classList.toggle('boost', rate >= 8);
   }
 })();

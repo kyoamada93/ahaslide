@@ -69,32 +69,88 @@ window.TH = (() => {
     })();
   }
 
-  // Draws a cartoon duck facing right, centered at (x, y), body width ~ 2.2*s.
-  function drawDuck(ctx, x, y, s, color, bob = 0, flap = 0) {
+  // Shade a #rrggbb colour: amt > 0 lightens, < 0 darkens.
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const f = (c) => Math.max(0, Math.min(255, Math.round(c + (amt > 0 ? (255 - c) : c) * amt)));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+
+  // Rubber duck facing right, centred at (x, y) on the waterline; body length ~ 2.3*s.
+  // opts: bob (phase), no (number badge), speed (0..1, wake size), flap (-1..1)
+  function drawDuck(ctx, x, y, s, color, opts = {}) {
+    if (typeof opts === 'number') opts = { bob: opts };
+    const { bob = 0, no = 0, speed = 0, flap = 0 } = opts;
+    const dark = shade(color, -0.28), light = shade(color, 0.45);
     ctx.save();
-    ctx.translate(x, y + Math.sin(bob) * s * 0.08);
-    // ripple
-    ctx.fillStyle = 'rgba(255,255,255,.22)';
-    ctx.beginPath(); ctx.ellipse(-s * .1, s * .62, s * 1.25, s * .18, 0, 0, 7); ctx.fill();
-    // body
+    ctx.translate(x, y + Math.sin(bob) * s * 0.06);
+    ctx.rotate(Math.sin(bob * 0.9) * 0.04 - speed * 0.06);
+    // wake: foam V behind the duck, longer when fast
+    if (speed > 0.05) {
+      const len = s * (0.8 + speed * 2.6);
+      ctx.strokeStyle = `rgba(255,255,255,${0.35 + speed * 0.4})`;
+      ctx.lineWidth = s * 0.09; ctx.lineCap = 'round';
+      for (const k of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(-s * 0.7, s * 0.42);
+        ctx.quadraticCurveTo(-s * 0.7 - len * 0.5, s * 0.42 + k * s * 0.15, -s * 0.7 - len, s * 0.42 + k * s * (0.25 + speed * 0.45));
+        ctx.stroke();
+      }
+    }
+    // reflection
+    ctx.fillStyle = 'rgba(0,30,60,.25)';
+    ctx.beginPath(); ctx.ellipse(-s * 0.05, s * 0.58, s * 1.15, s * 0.2, 0, 0, 7); ctx.fill();
+    // body + tail
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.ellipse(-s * .1, s * .15, s * 1.05, s * .62, 0, 0, 7); ctx.fill();
-    // tail
-    ctx.beginPath(); ctx.moveTo(-s * 1.0, s * .0); ctx.lineTo(-s * 1.35, -s * .35); ctx.lineTo(-s * .8, -s * .15); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 1.05, -s * 0.05);
+    ctx.quadraticCurveTo(-s * 1.25, -s * 0.62, -s * 0.78, -s * 0.38);
+    ctx.quadraticCurveTo(-s * 0.2, -s * 0.2, s * 0.35, -s * 0.12);
+    ctx.quadraticCurveTo(s * 1.05, -s * 0.05, s * 0.95, s * 0.28);
+    ctx.quadraticCurveTo(s * 0.8, s * 0.62, 0, s * 0.62);
+    ctx.quadraticCurveTo(-s * 0.95, s * 0.62, -s * 1.05, -s * 0.05);
+    ctx.fill();
+    // belly shade
+    ctx.fillStyle = dark; ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.ellipse(0, s * 0.45, s * 0.9, s * 0.18, 0, 0, Math.PI); ctx.fill();
+    ctx.globalAlpha = 1;
     // wing
-    ctx.fillStyle = 'rgba(0,0,0,.14)';
-    ctx.beginPath(); ctx.ellipse(-s * .25, s * .1 - flap * s * .1, s * .5, s * .3, -0.25 - flap * .3, 0, 7); ctx.fill();
+    ctx.fillStyle = dark; ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.ellipse(-s * 0.22, s * 0.1 - flap * s * 0.06, s * 0.45, s * 0.24, -0.35 - flap * 0.25, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
     // head
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(s * .7, -s * .45, s * .45, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.55, -s * 0.58, s * 0.44, 0, 7); ctx.fill();
     // beak
-    ctx.fillStyle = '#ff922b';
-    ctx.beginPath(); ctx.moveTo(s * 1.05, -s * .5); ctx.quadraticCurveTo(s * 1.5, -s * .42, s * 1.08, -s * .28); ctx.closePath(); ctx.fill();
-    // eye
-    ctx.fillStyle = '#1a0010'; ctx.beginPath(); ctx.arc(s * .82, -s * .58, s * .08, 0, 7); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s * .845, -s * .605, s * .03, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ff8c1a';
+    ctx.beginPath(); ctx.moveTo(s * 0.88, -s * 0.62);
+    ctx.quadraticCurveTo(s * 1.42, -s * 0.66, s * 1.3, -s * 0.48);
+    ctx.quadraticCurveTo(s * 1.15, -s * 0.36, s * 0.9, -s * 0.42); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e06d00';
+    ctx.beginPath(); ctx.moveTo(s * 0.9, -s * 0.5); ctx.quadraticCurveTo(s * 1.15, -s * 0.47, s * 1.28, -s * 0.5);
+    ctx.quadraticCurveTo(s * 1.12, -s * 0.38, s * 0.9, -s * 0.42); ctx.fill();
+    // cheek + eye
+    ctx.fillStyle = 'rgba(255,90,150,.45)'; ctx.beginPath(); ctx.arc(s * 0.68, -s * 0.44, s * 0.09, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1a0010'; ctx.beginPath(); ctx.arc(s * 0.7, -s * 0.7, s * 0.085, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s * 0.725, -s * 0.73, s * 0.032, 0, 7); ctx.fill();
+    // gloss
+    ctx.fillStyle = light; ctx.globalAlpha = 0.75;
+    ctx.beginPath(); ctx.ellipse(s * 0.4, -s * 0.8, s * 0.14, s * 0.07, -0.6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * 0.15, -s * 0.05, s * 0.28, s * 0.06, -0.15, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    // number badge
+    if (no) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(-s * 0.5, s * 0.2, s * 0.26, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1a0010';
+      ctx.font = `900 ${Math.round(s * (no > 99 ? 0.24 : 0.3))}px "Be Vietnam Pro", sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(no, -s * 0.5, s * 0.215);
+    }
+    // waterline foam
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = s * 0.06;
+    ctx.beginPath(); ctx.ellipse(0, s * 0.56, s * 0.95, s * 0.09, 0, 0, Math.PI); ctx.stroke();
     ctx.restore();
   }
 
-  return { socket, $, esc, toast, emit, particles, drawDuck };
+  return { socket, $, esc, toast, emit, particles, drawDuck, shade };
 })();
