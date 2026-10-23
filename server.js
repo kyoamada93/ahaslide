@@ -255,7 +255,9 @@ app.get('/brand/:slot', (req, res) => {
     res.type(type);
     return res.sendFile(path.join(BRAND_DIR, slot + '.bin'));
   }
-  res.sendFile(path.join(pub, BRAND[slot]));
+  const screenAssets = { bg: 'assets/townhall-ai-data-v2.webp', 'ai-data-logo': 'assets/ai-data-logo-townhall.webp' };
+  const asset = req.query.theme === 'townhall' && screenAssets[slot] || BRAND[slot];
+  res.sendFile(path.join(pub, asset));
 });
 app.post('/api/brand/:slot', express.raw({ type: IMAGE_TYPES, limit: '12mb' }), (req, res) => {
   if (req.query.key !== ADMIN_KEY) return res.status(401).send('Unauthorized');

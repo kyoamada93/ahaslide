@@ -100,6 +100,14 @@ Sửa `config.json` (khởi động lại server để áp dụng):
 - Đua vịt: `finishTaps` (số tap để về đích, mặc định 160 ≈ 15–20 giây), `maxTapsPerSecond` (chống auto-click), `maxDurationSec`, `podium`.
 - `qaTargets`: danh sách người nhận câu hỏi.
 
+### Nền trình chiếu & chuyển cảnh Morph
+
+Màn `/screen` dùng nền hồng sáng với quả cầu dữ liệu và dải lụa xanh (`public/assets/townhall-ai-data-v2.webp`, tạo bằng ImageGen). Logo **AI&Data** 3D nhỏ rộng 170 px nằm cố định ở góc trên bên trái (`public/assets/ai-data-logo-townhall.webp`), tách khỏi nền để không dịch chuyển theo hiệu ứng Morph. Màu chữ, word cloud và các panel đã được chỉnh cho nền sáng. Nền mặc định của điện thoại và admin vẫn dùng bộ ảnh riêng.
+
+Khi presenter chuyển slide, tiêu đề, QR, avatar và các khối nội dung chung di chuyển/đổi kích thước với chuyển cảnh 720 ms bằng Web Animations API, kèm nền dịch nhẹ. Hiệu ứng mô phỏng Morph trên web; không phải hiệu ứng nhúng của PowerPoint. Cập nhật vote/check-in trực tiếp không chạy lại chuyển cảnh. Chuyển liên tục, đổi kích thước cửa sổ và thiết lập **Reduce motion** của hệ thống được xử lý tự động.
+
+Ảnh nền tải lên từ admin vẫn được ưu tiên, kể cả sau khi reload. Để xem artwork mới nếu đã có ảnh upload, vào **Logo & background → ảnh nền màn chiếu → Mặc định**. `/brand/bg?theme=townhall` trả về artwork mới khi không có upload; `/brand/bg` tiếp tục phục vụ nền cũ cho những giao diện còn lại.
+
 ### Logo & background
 
 **Cách nhanh nhất:** trang admin → mục **Logo & background** → *Tải lên* logo AI & Data, ảnh nền 16:9 (màn chiếu) và 9:16 (điện thoại). Ảnh được lưu trong `DATA_DIR/brand/` và áp dụng ngay cho mọi màn hình đang mở; nút *Mặc định* để quay về ảnh có sẵn.

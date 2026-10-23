@@ -35,10 +35,13 @@ window.TH = (() => {
   // Branding uploaded from admin: reload logos/background without a page refresh.
   socket.on('brand', (slot) => {
     const v = Date.now();
-    document.querySelectorAll(`img[src^="/brand/${slot}"]`).forEach((img) => { img.src = `/brand/${slot}?v=${v}`; });
+    document.querySelectorAll(`img[src^="/brand/${slot}"]`).forEach((img) => { img.src = `/brand/${slot}?v=${v}${img.dataset.theme ? '&theme=' + encodeURIComponent(img.dataset.theme) : ''}`; });
     if (slot === 'bg' || slot === 'bg-mobile') {
       const bg = document.querySelector('.bg');
-      if (bg) bg.style.backgroundImage = `url('/brand/${matchMedia('(max-aspect-ratio: 1/1)').matches ? 'bg-mobile' : 'bg'}?v=${v}')`;
+      if (bg) {
+        const target = bg.dataset.theme ? 'bg' : matchMedia('(max-aspect-ratio: 1/1)').matches ? 'bg-mobile' : 'bg';
+        bg.style.backgroundImage = `url('/brand/${target}?v=${v}${bg.dataset.theme ? '&theme=' + encodeURIComponent(bg.dataset.theme) : ''}')`;
+      }
     }
   });
 
