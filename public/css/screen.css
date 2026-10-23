@@ -172,7 +172,7 @@ body { overflow: hidden; }
   isolation: isolate;
 }
 .townhall-screen .bg {
-  background: #fff1f7 url('/brand/bg?theme=townhall') center / cover no-repeat;
+  background: #fff1f7 url('/brand/bg?theme=townhall&v=2') center / cover no-repeat;
   transform: scale(1.015);
   transition: transform 1.1s cubic-bezier(.22, 1, .36, 1);
 }
@@ -189,8 +189,8 @@ body { overflow: hidden; }
 .townhall-screen .slide { animation: none; }
 .townhall-screen .slide h1 { color: #831052; text-shadow: none; letter-spacing: -.035em; }
 .townhall-screen .kicker { color: #a50064; background: rgba(255,255,255,.78); letter-spacing: .14em; }
-.townhall-screen .top .logos { padding: 8px 12px; border-radius: 16px; background: #831052; }
-.townhall-screen .top .logos img.aidata { height: 44px; }
+.townhall-screen .top .logos { padding: 0; background: transparent; }
+.townhall-screen .top .logos img.aidata { width: 170px; height: auto; object-fit: contain; }
 .townhall-screen .glass { box-shadow: 0 12px 40px rgba(132,37,89,.07); }
 .townhall-screen .poll-box, .townhall-screen .qa-grid .feature,
 .townhall-screen .qa-grid .item, .townhall-screen .qr-card,

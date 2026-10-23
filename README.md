@@ -102,7 +102,7 @@ Sửa `config.json` (khởi động lại server để áp dụng):
 
 ### Nền trình chiếu & chuyển cảnh Morph
 
-Màn `/screen` dùng artwork **AI&Data** 3D xanh trên nền hồng sáng (`public/assets/townhall-ai-data.webp`, tạo bằng ImageGen). Màu chữ, word cloud và các panel đã được chỉnh cho nền sáng. Nền mặc định của điện thoại và admin vẫn dùng bộ ảnh riêng.
+Màn `/screen` dùng nền hồng sáng với quả cầu dữ liệu và dải lụa xanh (`public/assets/townhall-ai-data-v2.webp`, tạo bằng ImageGen). Logo **AI&Data** 3D nhỏ rộng 170 px nằm cố định ở góc trên bên trái (`public/assets/ai-data-logo-townhall.webp`), tách khỏi nền để không dịch chuyển theo hiệu ứng Morph. Màu chữ, word cloud và các panel đã được chỉnh cho nền sáng. Nền mặc định của điện thoại và admin vẫn dùng bộ ảnh riêng.
 
 Khi presenter chuyển slide, tiêu đề, QR, avatar và các khối nội dung chung di chuyển/đổi kích thước với chuyển cảnh 720 ms bằng Web Animations API, kèm nền dịch nhẹ. Hiệu ứng mô phỏng Morph trên web; không phải hiệu ứng nhúng của PowerPoint. Cập nhật vote/check-in trực tiếp không chạy lại chuyển cảnh. Chuyển liên tục, đổi kích thước cửa sổ và thiết lập **Reduce motion** của hệ thống được xử lý tự động.
 
