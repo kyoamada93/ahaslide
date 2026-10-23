@@ -1,5 +1,5 @@
 (() => {
-  const { socket, $, esc, particles, drawDuck } = TH;
+  const { socket, $, esc, drawDuck } = TH;
   const stage = $('#stage');
   const params = new URLSearchParams(location.search);
   const adminKey = params.get('key');
@@ -7,7 +7,8 @@
   let renderedSlideId = null;
   let join = { url: '', svg: '' };
 
-  particles($('#fx'), 50);
+  const morph = TownhallMorph.create(stage);
+  const backdrop = $('.bg');
 
   // Keep the projector laptop from dimming or sleeping mid-event (needs https or localhost).
   let wakeLock = null;
@@ -45,7 +46,9 @@
     $('#miniJoin').classList.toggle('hidden', slide.type === 'checkin' || slide.type === 'feedback');
     $('#dots').innerHTML = S.slides.map((_, i) => `<span class="${i === S.slideIndex ? 'on' : i < S.slideIndex ? 'done' : ''}"></span>`).join('');
     if (renderedSlideId !== slide.id) {
+      const previous = morph.capture();
       renderedSlideId = slide.id;
+      backdrop.dataset.scene = slide.type;
       stopRace();
       clearTimeout(cloudTimer);
       if (typeof WordCloud === 'function') WordCloud.stop?.();
@@ -54,6 +57,9 @@
       el.className = 'slide ' + slide.type;
       stage.appendChild(el);
       (builders[slide.type] || builders.unknown)(el, slide);
+      (updaters[slide.type] || (() => {}))(el, slide);
+      morph.play(previous);
+      return;
     }
     (updaters[slide.type] || (() => {}))(stage.firstChild, slide);
   }
@@ -216,7 +222,7 @@
     const max = words[0].count;
     const area = canvas.width * canvas.height;
     const base = Math.sqrt(area / Math.max(12, words.length * 2.2));
-    const palette = ['#ffffff', '#ffd6ec', '#ff6fb5', '#ffa8d5', '#ffe066', '#fcc2d7', '#e599f7'];
+    const palette = ['#a50064', '#1261b5', '#753154', '#cc267d', '#254a84', '#9a4171', '#3b2351'];
     // Weights are font sizes in px; wordcloud2's shrinkToFit scales them down until a word fits.
     const size = (c) => Math.max(16 * dpr, Math.min(base * 1.1, base * (0.35 + 0.75 * (c / max))));
     const sizeToCount = new Map();
@@ -226,7 +232,7 @@
       weightFactor: 1, minSize: 6 * dpr,
       fontFamily: '"Be Vietnam Pro", "Segoe UI", sans-serif',
       fontWeight: (w) => ((sizeToCount.get(w) || 0) >= max * 0.6 ? 900 : 700),
-      color: (w) => { const c = sizeToCount.get(w) || 0; return c === max ? '#ffffff' : palette[(w.length + c) % palette.length]; },
+      color: (w) => { const c = sizeToCount.get(w) || 0; return c === max ? '#a50064' : palette[(w.length + c) % palette.length]; },
       backgroundColor: 'rgba(0,0,0,0)',
       rotateRatio: 0.15, rotationSteps: 2, gridSize: Math.round(8 * dpr), shrinkToFit: true, drawOutOfBound: false,
       shape: 'ellipse', ellipticity: 0.55,
@@ -249,7 +255,7 @@
     clearInterval(hudTimer);
     hudTimer = setInterval(hud, 200);
   }
-  function stopRace() { if (scene) scene.stop(); scene = null; clearInterval(hudTimer); }
+  function stopRace() { if (scene) scene.stop(); scene = null; lastRace = null; clearInterval(hudTimer); clearInterval(cdTimer); }
 
   // Leaderboard, timer and mini-map over the river.
   function hud() {
