@@ -27,7 +27,10 @@ const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
 // Optional separate key for the MC page: it can only pick/answer Q&A questions.
 const MC_KEY = process.env.MC_KEY || '';
 const MC_ACTIONS = new Set(['qa:highlight', 'qa:status', 'qa:next', 'goto']);
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+// Persistent volume on Railway is exposed as RAILWAY_VOLUME_MOUNT_PATH (e.g. /data); without one,
+// data lives in the container and is lost on every redeploy.
+const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+const DATA_PERSISTENT = !!(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH);
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const CONFIG_FILE = process.env.CONFIG_FILE || path.join(__dirname, 'config.json');
 
@@ -341,6 +344,7 @@ app.get('/healthz', (_req, res) => {
   loopDelay.reset();
   res.json({
     ok: true, clients: io.engine.clientsCount, users: Object.keys(state.users).length,
+    dataDir: DATA_DIR, persistent: DATA_PERSISTENT,
     rssMB: Math.round(m.rss / 1048576), cpuPct: Math.round(cpuPct), loopLagP99ms: Math.round(lagP99), uptimeSec: Math.round(process.uptime()),
   });
 });
@@ -900,6 +904,7 @@ setInterval(() => io.to('admin').emit('admin', adminState()), 5000);
 
 server.listen(PORT, () => {
   console.log(`Townhall running on http://localhost:${PORT}`);
+  console.log(`  Data dir : ${DATA_DIR}${DATA_PERSISTENT ? '' : ' (container disk — lost on redeploy; attach a volume)'}`);
   console.log(`  Audience : ${process.env.PUBLIC_URL || `http://${lanIp()}:${PORT}`}/`);
   console.log(`  Screen   : http://localhost:${PORT}/screen`);
   console.log(`  Admin    : http://localhost:${PORT}/admin?key=${ADMIN_KEY}`);

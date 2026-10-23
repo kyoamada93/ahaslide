@@ -77,7 +77,7 @@ Nếu mở `/screen` qua tên miền công khai thì QR tự lấy tên miền �
 | `ADMIN_KEY` | `momo-aidata` | Mật khẩu cho admin / moderator / điều khiển màn hình |
 | `MC_KEY` | (trống = dùng `ADMIN_KEY`) | Mã riêng cho trang MC, chỉ chọn/trả lời câu hỏi |
 | `PUBLIC_URL` | tự phát hiện (trên Render dùng `RENDER_EXTERNAL_URL`) | URL khán giả dùng (mã hoá trong QR) |
-| `DATA_DIR` | `./data` | Nơi lưu `state.json` (tự lưu mỗi giây, khởi động lại không mất dữ liệu) |
+| `DATA_DIR` | volume Railway (`RAILWAY_VOLUME_MOUNT_PATH`) nếu có, không thì `./data` | Nơi lưu `state.json` và logo/ảnh nền upload (tự lưu mỗi giây). Trên Railway: gắn Volume (vd. mount `/data`) để không mất dữ liệu khi deploy; `/healthz` báo `persistent: true` khi đang dùng volume |
 | `CONFIG_FILE` | `./config.json` | File cấu hình chương trình |
 
 ## Lấy câu hỏi từ Google Sheet (Google Form)
