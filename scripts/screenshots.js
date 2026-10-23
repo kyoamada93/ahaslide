@@ -35,6 +35,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     if (slides[i] === 'qa') {
       const pend = A.questions.filter((q) => q.status === 'pending');
       for (const q of pend.slice(0, 5)) await act({ type: 'qa:status', qid: q.id, status: 'approved' });
+      await wait(1500);
+      await screen.screenshot({ path: path.join(OUT, 'screen-4a-qa-no-pick.png') });
       if (pend[0]) await act({ type: 'qa:highlight', qid: pend[0].id });
       await wait(1500);
     }

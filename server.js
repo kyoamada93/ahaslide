@@ -154,7 +154,7 @@ function raceView() {
     startedAt: r.startedAt,
     endedAt: r.endedAt,
     playerCount: Object.keys(r.players).length,
-    finishOrder: r.finishOrder.map((id) => ({ id, name: r.players[id]?.name, color: r.players[id]?.color, no: r.players[id]?.no })),
+    finishOrder: r.finishOrder.map((id) => ({ id, name: r.players[id]?.name, color: r.players[id]?.color, no: r.players[id]?.no, team: state.users[id]?.team || '' })),
     maxDurationSec: slideById.race?.maxDurationSec || 60,
   };
 }

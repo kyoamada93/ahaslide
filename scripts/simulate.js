@@ -22,7 +22,7 @@ for (let i = 0; i < N; i++) {
       if (sl.type === 'poll') once('p', () => s.emit('poll:vote', { slideId: sl.id, option: Math.random() < 0.4 ? 2 : Math.floor(Math.random() * sl.options.length) }, () => {}));
       if (sl.type === 'qa' || sl.type === 'speaker') {
         if (Math.random() < 0.15) once('q' + sl.id, () => s.emit('qa:ask', { text: pick(QUESTIONS), target: sl.speaker || 'Chung' }, () => {}));
-        st.questions.forEach((q) => { if (Math.random() < 0.3) once('u' + q.id, () => s.emit('qa:upvote', q.id, () => {})); });
+        (st.questions || []).forEach((q) => { if (Math.random() < 0.3) once('u' + q.id, () => s.emit('qa:upvote', q.id, () => {})); });
       }
       if (sl.type === 'race') {
         if (st.race.phase === 'lobby' && !me.duck && !me.joining) {

@@ -224,11 +224,13 @@
     },
     qa(el) {
       const qs = S.questions;
-      const feat = qs.find((q) => q.highlighted) || qs.find((q) => q.status === 'approved');
+      const feat = qs.find((q) => q.highlighted); // only the question the MC picked to answer
       const featBox = $('#qaFeature', el);
       const featHtml = feat
-        ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— ${feat.name === 'Ẩn danh' ? 'Câu hỏi ẩn danh' : esc(feat.name)} · ▲ ${feat.upvotes}</div>`
-        : `<div class="q" style="opacity:.7">Chưa có câu hỏi nào được duyệt.<br>Hãy gửi câu hỏi từ điện thoại nhé! 📱</div>`;
+        ? `<div class="kicker">🎤 MC đang trả lời${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— ${feat.name === 'Ẩn danh' ? 'Câu hỏi ẩn danh' : esc(feat.name)} · ▲ ${feat.upvotes}</div>`
+        : (qs.length
+          ? `<div class="kicker">🎤 Câu hỏi MC chọn trả lời</div><div class="q" style="opacity:.7">MC sẽ chọn câu hỏi tiếp theo…</div>`
+          : `<div class="q" style="opacity:.7">Chưa có câu hỏi nào được duyệt.<br>Hãy gửi câu hỏi từ điện thoại nhé! 📱</div>`);
       if (featBox._html !== featHtml) { featBox.innerHTML = featHtml; featBox._html = featHtml; fitText(featBox); }
       const rest = qs.filter((q) => q !== feat).slice(0, 7);
       // Only questions that just appeared get the pop-in; upvote updates must not replay it.
@@ -372,17 +374,26 @@
     } else if (r.phase === 'racing') {
       ov.innerHTML = '';
     } else if (r.phase === 'finished') {
-      const [a, b, c] = r.finishOrder;
-      const block = (p, k) => p ? `<div class="p p${k}"><canvas width="240" height="170" data-color="${p.color}" data-no="${p.no || ''}"></canvas><div class="name">${esc(p.name)}</div><div class="block">${k}</div></div>` : '';
-      ov.innerHTML = `<div class="win-title">🏆 Chúc mừng nhà vô địch!</div>
-        <div class="podium">${block(b, 2)}${block(a, 1)}${block(c, 3)}</div>`;
-      ov.querySelectorAll('.podium canvas').forEach((cv, i) => {
+      // Results card: names first and large; the duck is just a small colour badge.
+      const top = r.finishOrder.slice(0, 3);
+      const team = (p) => (p.team ? `<span class="rr-team">${esc(p.team)}</span>` : '');
+      ov.innerHTML = `<div class="race-result">
+          <div class="rr-head">🏆 Kết quả Đua vịt</div>
+          ${top.map((p, i) => `
+            <div class="rr-row rr-${i + 1}">
+              <span class="rr-medal">${['🥇', '🥈', '🥉'][i]}</span>
+              <canvas class="rr-duck" width="120" height="90" data-color="${p.color}" data-no="${p.no || ''}"></canvas>
+              <span class="rr-name">${esc(p.name)}${team(p)}</span>
+              <span class="rr-no">Vịt #${p.no || '–'}</span>
+            </div>`).join('')}
+        </div>`;
+      ov.querySelectorAll('.rr-duck').forEach((cv, i) => {
         const ctx = cv.getContext('2d');
         let t = i;
         (function f() {
           if (!cv.isConnected) return;
-          ctx.clearRect(0, 0, 240, 170);
-          drawDuck(ctx, 115, 110, 58, cv.dataset.color, { bob: t += 0.1, no: Number(cv.dataset.no) });
+          ctx.clearRect(0, 0, 120, 90);
+          drawDuck(ctx, 56, 58, 30, cv.dataset.color, { bob: t += 0.1, no: Number(cv.dataset.no) });
           requestAnimationFrame(f);
         })();
       });
