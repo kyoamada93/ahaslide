@@ -7,7 +7,7 @@
 const BASE = process.env.COMPOSIO_BASE_URL || 'https://backend.composio.dev/api/v3.1';
 const API_KEY = process.env.COMPOSIO_API_KEY || '';
 let account = process.env.COMPOSIO_CONNECTED_ACCOUNT_ID || '';
-const USER_ID = process.env.COMPOSIO_USER_ID || '';
+let userId = process.env.COMPOSIO_USER_ID || ''; // owner of the connected account (required by tools/execute)
 const TAB = process.env.COMPOSIO_SHEET_TAB || '';
 
 const configured = () => !!API_KEY;
@@ -19,10 +19,12 @@ async function getJson(url) {
   return json;
 }
 
-// The project's active Google Sheets connection (so nobody has to copy its id by hand).
+// The project's active Google Sheets connection and its user id (so nobody has to copy them by hand).
 async function resolveAccount() {
-  if (account) return account;
-  const q = 'connected_accounts?toolkit_slugs=googlesheets&statuses=ACTIVE&limit=50';
+  if (account && userId) return account;
+  const q = account
+    ? `connected_accounts?connected_account_ids=${encodeURIComponent(account)}&limit=1`
+    : 'connected_accounts?toolkit_slugs=googlesheets&statuses=ACTIVE&limit=50';
   let json;
   try { json = await getJson(`${BASE}/${q}`); } catch (e) {
     // some deployments only expose the listing under /api/v3
@@ -30,15 +32,21 @@ async function resolveAccount() {
     json = await getJson(`${BASE.replace(/\/v3\.1$/, '/v3')}/${q}`);
   }
   const items = (json.items || json.data || []).filter((a) => !a.status || a.status === 'ACTIVE');
-  if (!items.length) throw new Error('Composio: chưa có tài khoản Google Sheets nào đang kết nối trong project này — vào dashboard Composio → Google Sheets → Connect account');
+  if (!items.length) {
+    throw new Error(account
+      ? `Composio: không tìm thấy connected account ${account} (hoặc nó không còn ACTIVE)`
+      : 'Composio: chưa có tài khoản Google Sheets nào đang kết nối trong project này — vào dashboard Composio → Google Sheets → Connect account');
+  }
   items.sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
-  account = items[0].id;
+  const pick = items.find((a) => a.id === account) || items[0];
+  account = pick.id;
+  userId = userId || pick.user_id || pick.userId || '';
+  if (!userId) throw new Error('Composio không trả về user_id của tài khoản — đặt biến COMPOSIO_USER_ID');
   return account;
 }
 
 async function execute(slug, args) {
-  const body = { connected_account_id: await resolveAccount(), arguments: args };
-  if (USER_ID) body.user_id = USER_ID;
+  const body = { connected_account_id: await resolveAccount(), user_id: userId, arguments: args };
   const res = await fetch(`${BASE}/tools/execute/${slug}`, {
     method: 'POST',
     headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' },

@@ -23,13 +23,14 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
       if (req.method === 'GET' && req.url.startsWith('/connected_accounts?')) {
         assert.ok(req.url.includes('toolkit_slugs=googlesheets') && req.url.includes('statuses=ACTIVE'));
         return json(200, { items: [
-          { id: 'ca_old', status: 'ACTIVE', toolkit: { slug: 'googlesheets' }, updated_at: '2026-10-01T00:00:00Z' },
-          { id: 'ca_test', status: 'ACTIVE', toolkit: { slug: 'googlesheets' }, updated_at: '2026-10-22T00:00:00Z' },
+          { id: 'ca_old', user_id: 'u_old', status: 'ACTIVE', toolkit: { slug: 'googlesheets' }, updated_at: '2026-10-01T00:00:00Z' },
+          { id: 'ca_test', user_id: 'pg-user-1', status: 'ACTIVE', toolkit: { slug: 'googlesheets' }, updated_at: '2026-10-22T00:00:00Z' },
         ] });
       }
       const b = JSON.parse(body || '{}');
       seen.push({ url: req.url, body: b });
       if (b.connected_account_id !== 'ca_test') return json(400, { successful: false, error: 'connected account not found' });
+      if (b.user_id !== 'pg-user-1') return json(400, { successful: false, error: 'User ID is required with connected account.' });
       if (failNext) { failNext = false; return json(200, { successful: false, error: 'The caller does not have permission' }); }
       if (req.url.endsWith('/GOOGLESHEETS_GET_SHEET_NAMES')) return json(200, { successful: true, data: { sheet_names: ['Dashboard', 'Form_Responses'] } });
       if (req.url.endsWith('/GOOGLESHEETS_BATCH_GET')) {
