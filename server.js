@@ -120,7 +120,7 @@ function applyContent() {
   for (const s of slides) {
     const def = DEFAULTS.slides[s.id];
     const over = content.slides[s.id] || {};
-    for (const k of [...TEXT_FIELDS, 'options', 'agenda']) {
+    for (const k of [...TEXT_FIELDS, 'options', 'speakers', 'agenda']) {
       const v = k in over ? over[k] : def[k];
       if (v === undefined) delete s[k];
       else s[k] = JSON.parse(JSON.stringify(v));
@@ -145,6 +145,12 @@ function cleanSlideEdit(slide, f = {}) {
     const opts = (Array.isArray(f.options) ? f.options : []).map((o) => clean(o, 300)).filter(Boolean);
     if (opts.length < 2 || opts.length > 20) return 'Vote cần 2–20 lựa chọn';
     out.options = opts;
+  }
+  if (slide.type === 'poll' && 'speakers' in f) {
+    // one speaker per option, same order; '' = no speaker shown
+    const n = (out.options || slide.options).length;
+    const sp = Array.isArray(f.speakers) ? f.speakers : [];
+    out.speakers = Array.from({ length: n }, (_, i) => clean(sp[i], 120));
   }
   if (slide.type === 'speaker' && 'agenda' in f) {
     const ag = (Array.isArray(f.agenda) ? f.agenda : []).slice(0, 10)
@@ -463,9 +469,9 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
       const rows = [];
       for (const s of slides.filter((x) => x.type === 'poll')) {
         const r = pollResults(s.id, true);
-        s.options.forEach((o, i) => rows.push([s.id, o, r.counts[i]]));
+        s.options.forEach((o, i) => rows.push([s.id, o, s.speakers?.[i] || '', r.counts[i]]));
       }
-      return sendCsv(res, 'votes', ['slide', 'option', 'votes'], rows);
+      return sendCsv(res, 'votes', ['slide', 'option', 'speaker', 'votes'], rows);
     }
     case 'questions':
       return sendCsv(res, 'questions', ['target', 'question', 'category', 'status', 'upvotes', 'answer_seconds', 'created_at'],

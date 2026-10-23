@@ -160,7 +160,11 @@
         const fields = {};
         $('#editForm').querySelectorAll('[data-f]').forEach((el) => {
           const k = el.dataset.f;
-          fields[k] = k === 'options' ? el.value.split('\n').map((x) => x.trim()).filter(Boolean) : k === 'agenda' ? textToAgenda(el.value) : el.value;
+          if (k === 'options') {
+            const lines = el.value.split('\n').map((x) => x.trim()).filter(Boolean);
+            fields.options = lines.map((l) => l.split('|')[0].trim());
+            fields.speakers = lines.map((l) => l.split('|').slice(1).join('|').trim());
+          } else fields[k] = k === 'agenda' ? textToAgenda(el.value) : el.value;
         });
         document.activeElement?.blur();
         const r = await action({ type: 'content:save', slideId: S.slide.id, fields });
@@ -224,7 +228,7 @@
         ${!p.open && !p.hidden ? `<div class="row"><span class="muted tiny">Vote đã đóng → màn hình đang hiện:</span><button class="btn small ${p.view === 'all' ? 'ghost' : 'ok'}" data-a="poll-view" data-s="${sl.id}">${p.view === 'all' ? '📊 Toàn bộ (bấm để xem 🏆 Top 3)' : '🏆 Top 3 (bấm để xem 📊 toàn bộ)'}</button></div>` : '<p class="muted tiny">💡 Bấm 🔒 Đóng vote → màn hình tự hiện 🏆 Top 3.</p>'}
         <div class="row"><span class="muted tiny">Hẹn giờ đóng vote:</span>${[30, 60, 120, 300].map((t) => `<button class="btn small ghost" data-a="poll-timer" data-s="${sl.id}" data-t="${t}">${t < 60 ? t + 's' : t / 60 + ' phút'}</button>`).join('')}
         ${left ? `<span class="pill">⏱ còn ~${left}s</span>` : ''}</div>
-        <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}</div>`).join('')}</div>`;
+        <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i], sp: sl.speakers?.[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}${x.sp ? ` <span class="muted">🎤 ${esc(x.sp)}</span>` : ''}</div>`).join('')}</div>`;
     },
     speaker: (sl) => `<p>Đang chiếu: <b>${esc(sl.speaker || `${sl.kicker || 'Mục'}: ${sl.title}`)}</b>${sl.topic ? ' — ' + esc(sl.topic) : ''}</p><p class="muted tiny">Khán giả có thể gửi câu hỏi trong lúc sharing; duyệt ở cột Q&A.</p>`,
     qa: () => `<p class="muted">Duyệt câu hỏi ở cột bên phải. ⭐ Highlight = hiển thị to trên màn hình (đang trả lời).</p>`,
@@ -275,7 +279,7 @@
     const sl = S.slide;
     const fields = FIELDS_BY_TYPE[sl.type] || ['title', 'subtitle'];
     box.innerHTML = fields.map((k) => `<label>${FIELD_LABEL[k]}</label><input type="text" maxlength="300" data-f="${k}" value="${esc(sl[k] || '')}">`).join('')
-      + (sl.type === 'poll' ? `<label>Các lựa chọn vote — mỗi dòng 1 lựa chọn (2–20)</label><textarea data-f="options" rows="8">${esc((sl.options || []).join('\n'))}</textarea>
+      + (sl.type === 'poll' ? `<label>Các lựa chọn vote — mỗi dòng 1 lựa chọn (2–20), dạng: Chủ đề | speaker</label><textarea data-f="options" rows="8">${esc((sl.options || []).map((o, i) => (sl.speakers?.[i] ? `${o} | ${sl.speakers[i]}` : o)).join('\n'))}</textarea>
           <p class="muted tiny">Phiếu vote gắn theo thứ tự dòng: sửa chữ thì giữ nguyên phiếu; xoá bớt dòng ở cuối thì phiếu của các dòng đó bị bỏ.</p>` : '')
       + (sl.type === 'speaker' ? `<label>Agenda — dòng bắt đầu bằng # là tên mục, các dòng dưới là ý trong mục</label><textarea data-f="agenda" rows="10">${esc(agendaToText(sl.agenda))}</textarea>` : '')
       + `<div class="row"><button class="btn small ok" data-a="content-save">💾 Lưu &amp; hiển thị ngay</button><button class="btn small ghost" data-a="content-revert">↺ Về nội dung gốc</button></div>`;

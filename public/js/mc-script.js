@@ -1,6 +1,7 @@
 /* MC script: what to say on each slide, and how to lead into each kind of Q&A question.
    Edit freely — plain text. {event} = event name, {checkins} = number checked in,
-   {fun} / {okr} / {hard} = number of approved questions in each group. */
+   {fun} / {okr} / {hard} = number of approved questions in each group,
+   {top3} = vote Top 3 with speakers (read from 3rd to 1st), once results are public. */
 window.MC_SCRIPT = {
   // Suggested time per answer on the MC timer: yellow after warnMin, red after maxMin.
   answerTime: { warnMin: 3, maxMin: 5 },
@@ -53,8 +54,10 @@ window.MC_SCRIPT = {
         'Còn 10 giây… ai chưa vote thì nhanh tay! 3… 2… 1… Đóng vote!',
       ] },
       { cue: 'Công bố Top 3', lines: [
-        'Và đây là Top 3 chủ đề được yêu thích nhất! [đọc từ hạng 3 lên hạng 1]',
-        'Xin một tràng pháo tay cho các speaker — các chủ đề này sẽ được ưu tiên trong các buổi sharing sắp tới.',
+        'Và đây là Top 3 chủ đề được yêu thích nhất! Mình sẽ công bố từ hạng 3 lên hạng 1 nhé…',
+        '{top3}',
+        'Xin mời các speaker của Top 3 lên sân khấu nhận giải! Xin một tràng pháo tay thật lớn!',
+        'Cảm ơn tất cả speaker đã đăng ký chủ đề. Các chủ đề này sẽ được ưu tiên trong các buổi sharing sắp tới.',
       ] },
       { cue: '➡ Chuyển sang phần chia sẻ', lines: [
         'Nói về sharing thì không thể thiếu phần quan trọng nhất hôm nay…',

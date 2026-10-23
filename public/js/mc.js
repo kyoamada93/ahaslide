@@ -100,7 +100,20 @@
     const c = counts();
     return esc(t).replace(/\{event\}/g, esc(S.eventTitle || 'Townhall')).replace(/\{checkins\}/g, S.checkedIn)
       .replace(/\{fun\}/g, c.fun).replace(/\{okr\}/g, c.okr).replace(/\{hard\}/g, c.hard)
-      .replace(/\[([^\]]+)\]/g, '<i class="muted">[$1]</i>');
+      .replace(/\[([^\]]+)\]/g, '<i class="muted">[$1]</i>')
+      .replace(/\{top3\}/g, top3Lines);
+  };
+  // Vote Top 3 for the announcement, read from 3rd place up to the winner.
+  const top3Lines = () => {
+    const sl = S.slide.type === 'poll' ? S.slide : null;
+    const counts = sl && S.poll?.counts;
+    if (!counts || !S.poll.total) return '<i class="muted">[Kết quả + tên speaker hiện ở đây khi vote đã đóng và công bố kết quả]</i>';
+    const top = counts.map((c, i) => ({ c, i })).sort((a, b) => b.c - a.c || a.i - b.i).slice(0, 3).reverse();
+    const place = ['🥇 Hạng 1', '🥈 Hạng 2', '🥉 Hạng 3'];
+    return top.map((t) => {
+      const k = top.length - 1 - top.indexOf(t);
+      return `<b>${place[k]}</b>: “${esc(sl.options[t.i])}” (${t.c} phiếu)${sl.speakers?.[t.i] ? ` — xin mời speaker <b>${esc(sl.speakers[t.i])}</b>` : ''}`;
+    }).join('<br>');
   };
   let scriptHtml = '';
   function renderScript() {

@@ -83,3 +83,5 @@ body { min-height: 100%; overscroll-behavior: none; }
 .top3-row .m { font-size: 22px; }
 .top3-row b { color: #ffe066; }
 .top3-row.mine .tt { text-decoration: underline; text-decoration-color: #ff6fb5; text-underline-offset: 3px; }
+
+.opt .spk, .top3-row .spk { display: block; font-size: 12px; font-weight: 700; opacity: .8; margin-top: 3px; }

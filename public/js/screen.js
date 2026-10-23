@@ -104,7 +104,7 @@
         <div class="poll-top3 hidden" id="pollTop3"></div>
         <div class="poll-box glass" id="poll" data-panel>${sl.options.map((o, i) => `
           <div class="opt" data-i="${i}"><div class="num">${i + 1}</div>
-            <div class="bar-wrap"><div class="bar" style="width:0"></div><div class="label">${esc(o)}</div></div>
+            <div class="bar-wrap"><div class="bar" style="width:0"></div><div class="label">${esc(o)}${sl.speakers?.[i] ? `<span class="spk">🎤 ${esc(sl.speakers[i])}</span>` : ''}</div></div>
             <div class="val"><span class="c">0</span><small class="p">0%</small></div></div>`).join('')}</div>`;
     },
     speaker(el, sl) {
@@ -210,11 +210,12 @@
           <div class="t3 t3-${k + 1} glass">
             <div class="t3-medal">${['🥇', '🥈', '🥉'][k]}</div>
             <div class="t3-body"><div class="t3-title">${esc(S.slide.options[r.i])}</div>
+              ${S.slide.speakers?.[r.i] ? `<div class="t3-spk">🎤 ${esc(S.slide.speakers[r.i])}</div>` : ''}
               <div class="t3-bar"><i style="width:${Math.round((r.c / Math.max(1, ranked[0].c)) * 100)}%"></i></div></div>
             <div class="t3-val">${r.c}<small>${Math.round((r.c / total) * 100)}% · ${r.c} phiếu</small></div>
           </div>`).join('');
         const box = $('#pollTop3', el);
-        if (box._html !== html) { box.innerHTML = `<div class="t3-head">🏆 Top 3 chủ đề được yêu thích nhất</div>${html}`; box._html = html; }
+        if (box._html !== html) { box.innerHTML = `<div class="t3-head">🏆 Top 3 chủ đề được yêu thích nhất${S.slide.speakers?.length ? '<span>Xin mời các speaker lên nhận giải! 🎉</span>' : ''}</div>${html}`; box._html = html; }
       }
       el.querySelectorAll('.opt').forEach((row, i) => {
         const c = shownCounts[i];

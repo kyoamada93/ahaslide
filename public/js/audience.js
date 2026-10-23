@@ -128,14 +128,14 @@
           // After voting: the current top 3 (final once the vote closes).
           const top = p.counts.map((c, i) => ({ c, i })).sort((a, b) => b.c - a.c || a.i - b.i).slice(0, 3);
           return `<div class="top3"><div class="kick">${p.open ? '🔥 Top 3 hiện tại' : '🏆 Kết quả Top 3'}</div>${top.map((t, k) => `
-            <div class="top3-row ${my === t.i ? 'mine' : ''}"><span class="m">${['🥇', '🥈', '🥉'][k]}</span><span class="tt">${esc(sl.options[t.i])}</span><b>${Math.round((t.c / p.total) * 100)}%</b></div>`).join('')}</div>`;
+            <div class="top3-row ${my === t.i ? 'mine' : ''}"><span class="m">${['🥇', '🥈', '🥉'][k]}</span><span class="tt">${esc(sl.options[t.i])}${sl.speakers?.[t.i] ? `<small class="spk">🎤 ${esc(sl.speakers[t.i])}</small>` : ''}</span><b>${Math.round((t.c / p.total) * 100)}%</b></div>`).join('')}</div>`;
         })() : ''}
         <div class="opts">${sl.options.map((o, i) => {
           const showPc = voted && p.counts; // results may be hidden until the presenter reveals them
           const pc = showPc && p.total ? Math.round((p.counts[i] / p.total) * 100) : 0;
           return `<button class="opt ${my === i ? 'sel' : ''}" data-act="vote" data-i="${i}" ${p.open ? '' : 'disabled'}>
             ${showPc ? `<span class="fill" style="width:${pc}%"></span>` : ''}
-            <span class="n">${i + 1}</span><span class="tx">${esc(o)}</span>${showPc ? `<span class="pc">${pc}% · ${p.counts[i]} phiếu</span>` : ''}</button>`;
+            <span class="n">${i + 1}</span><span class="tx">${esc(o)}${sl.speakers?.[i] ? `<small class="spk">🎤 ${esc(sl.speakers[i])}</small>` : ''}</span>${showPc ? `<span class="pc">${pc}% · ${p.counts[i]} phiếu</span>` : ''}</button>`;
         }).join('')}</div>
         ${voted ? `<p class="muted" style="margin-top:12px;font-size:14px">✅ Đã ghi nhận. ${p.open ? 'Bạn có thể đổi lựa chọn khi vote còn mở.' : ''}${p.counts ? '' : ' Kết quả sẽ được công bố trên màn hình chính.'}</p>` : ''}
       </div>`;
