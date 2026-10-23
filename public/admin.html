@@ -56,12 +56,13 @@
       <h3>Q&A — duyệt câu hỏi</h3>
       <details class="sheet-box" id="sheetBox" open>
         <summary>📄 Lấy câu hỏi từ Google Sheet (Google Form)</summary>
+        <div class="google-row" id="googleRow"></div>
         <input type="text" id="sheetUrl" placeholder="Dán link Google Sheet (tab Form_Responses)…">
         <label class="check"><input type="checkbox" id="sheetApprove"> Duyệt luôn (hiện lên ngay, không qua chờ duyệt)</label>
         <label class="check"><input type="checkbox" id="sheetAuto"> Tự động đồng bộ mỗi 1 phút</label>
         <div class="row"><button class="btn small ok" data-a="sheet-sync">🔄 Đồng bộ ngay</button><button class="btn small ghost" data-a="sheet-save">Lưu cài đặt</button></div>
         <div class="muted tiny" id="sheetStatus"></div>
-        <div class="muted tiny">Sheet cần chia sẻ <b>"Bất kỳ ai có đường liên kết → Người xem"</b>. Câu đã lấy sẽ không bị lấy trùng; chỉ lấy câu chọn "Cả hai" hoặc "Trả lời trực tiếp trong buổi Town Hall".</div>
+        <div class="muted tiny">Đăng nhập Google bằng tài khoản xem được sheet (sheet riêng tư vẫn đọc được). Chưa đăng nhập thì sheet phải chia sẻ <b>"Bất kỳ ai có đường liên kết → Người xem"</b>. Câu đã lấy không bị lấy trùng; chỉ lấy câu chọn "Cả hai" hoặc "Trả lời trực tiếp trong buổi Town Hall".</div>
       </details>
       <div class="qa-add">
       <textarea id="qaNew" maxlength="300" placeholder="➕ Thêm câu hỏi (ban tổ chức / câu hỏi gom từ kênh khác)…"></textarea>

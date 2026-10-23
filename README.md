@@ -90,6 +90,22 @@ Trang admin → cột Q&A → **📄 Lấy câu hỏi từ Google Sheet**:
 
 Cột được nhận theo tiêu đề: "Câu hỏi…" là nội dung, "Timestamp" là thời gian, cột "…xử lý thế nào" dùng để lọc — chỉ lấy câu chọn *Cả hai* hoặc *Trả lời trực tiếp trong buổi Town Hall*. Câu đã lấy không bị lấy trùng khi đồng bộ lại; câu có từ ngữ không phù hợp được gắn ⚠️ cho moderator.
 
+### Đăng nhập Google (đọc sheet riêng tư, không cần chia sẻ công khai)
+
+Server chỉ xin quyền **đọc** Google Sheets (`spreadsheets.readonly`). Token lưu ở server, không gửi xuống trình duyệt.
+
+1. Vào https://console.cloud.google.com → tạo project (vd. *Townhall AI&Data*).
+2. **APIs & Services → Library** → bật **Google Sheets API**.
+3. **Google Auth Platform → Branding / Audience** (OAuth consent screen): chọn **Internal** (tài khoản Google Workspace của công ty → không cần Google duyệt app). Nếu không chọn được Internal: chọn *External*, để *Testing* và thêm email của bạn vào **Test users** (khi đó phải đăng nhập lại sau mỗi 7 ngày).
+4. **Clients → Create client → Web application** → *Authorized redirect URIs*: `https://ahaslide-production.up.railway.app/auth/google/callback`
+5. Copy **Client ID** và **Client secret** → Railway → tab **Variables** → thêm `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (Railway tự deploy lại).
+6. Admin → khung Google Sheet → **🔐 Đăng nhập Google** → chọn tài khoản xem được sheet → **🔄 Đồng bộ ngay**.
+
+| Biến | Ý nghĩa |
+|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth client (Web application) |
+| `GOOGLE_REDIRECT_URI` | Tuỳ chọn; mặc định `<địa chỉ app>/auth/google/callback` |
+
 ## So với AhaSlides
 
 Đã đối chiếu với tài liệu AhaSlides (Word Cloud, Poll, Q&A, Duck Race, cách mời khán giả):

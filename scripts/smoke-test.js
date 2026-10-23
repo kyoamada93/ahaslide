@@ -15,7 +15,32 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
 
 (async () => {
-  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, ADMIN_KEY: KEY, MC_KEY: 'mc-key', DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'inherit'] });
+  // Fake Google (OAuth token endpoint + Sheets API) so the login → sync flow runs offline.
+  const idToken = ['x', Buffer.from(JSON.stringify({ email: 'nghia@example.com' })).toString('base64url'), 'y'].join('.');
+  const fakeGoogle = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      const json = (code, obj) => { res.statusCode = code; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(obj)); };
+      if (req.url === '/token') {
+        const p = new URLSearchParams(body);
+        if (p.get('client_secret') !== 'test-secret') return json(401, { error: 'invalid_client' });
+        if (p.get('grant_type') === 'authorization_code') return p.get('code') === 'good' ? json(200, { access_token: 'at1', refresh_token: 'rt1', expires_in: 1, id_token: idToken }) : json(400, { error: 'invalid_grant' });
+        if (p.get('grant_type') === 'refresh_token') return json(200, { access_token: 'at2', expires_in: 3600 });
+      }
+      if (!/^Bearer at[12]$/.test(req.headers.authorization || '')) return json(401, { error: { message: 'unauthenticated' } });
+      if (req.url.startsWith('/sheets/PRIVATEID?')) return json(200, { sheets: [{ properties: { sheetId: 0, title: 'Other' } }, { properties: { sheetId: 2088885041, title: 'Form_Responses' } }] });
+      if (req.url.startsWith('/sheets/PRIVATEID/values/')) {
+        assert.ok(decodeURIComponent(req.url).includes("'Form_Responses'"), 'reads the tab from #gid');
+        return json(200, { values: [['Timestamp', 'Câu hỏi của bạn', 'Bạn muốn câu hỏi được xử lý thế nào?'], ['10/21/2026 9:28:35', 'Câu hỏi từ sheet riêng tư?', 'Cả hai']] });
+      }
+      json(404, { error: { message: 'not found' } });
+    });
+  }).listen(0);
+  await new Promise((r) => fakeGoogle.once('listening', r));
+  const G = `http://localhost:${fakeGoogle.address().port}`;
+  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, ADMIN_KEY: KEY, MC_KEY: 'mc-key', DATA_DIR: dataDir,
+    GOOGLE_CLIENT_ID: 'test-client', GOOGLE_CLIENT_SECRET: 'test-secret', GOOGLE_AUTH_URL: `${G}/auth`, GOOGLE_TOKEN_URL: `${G}/token`, GOOGLE_SHEETS_API: `${G}/sheets` }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((r) => srv.stdout.on('data', (d) => String(d).includes('running') && r()));
   let failed = false;
   try {
@@ -157,6 +182,27 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     assert.ok(!r.ok && /chia sẻ/.test(r.error), 'private sheet explained');
     assert.equal((await call(users[2], 'admin:action', { type: 'sheet:sync' })).ok, false, 'audience cannot sync');
     sheetSrv.close();
+
+    // Google login → private sheet via Sheets API
+    assert.equal((await fetch(`${URL}/auth/google`, { redirect: 'manual' })).status, 401, 'login link needs admin key');
+    const go = await fetch(`${URL}/auth/google?key=${KEY}`, { redirect: 'manual' });
+    const loc = new globalThis.URL(go.headers.get('location'));
+    assert.ok(loc.href.startsWith(`${G}/auth`) && loc.searchParams.get('scope').includes('spreadsheets.readonly'), 'redirects to Google consent');
+    assert.ok(loc.searchParams.get('redirect_uri').endsWith('/auth/google/callback'));
+    const st = loc.searchParams.get('state');
+    const cbk = await fetch(`${URL}/auth/google/callback?code=good&state=${st}`, { redirect: 'manual' });
+    assert.equal(cbk.headers.get('location'), '/admin?google=ok', 'callback ok');
+    const replay = await fetch(`${URL}/auth/google/callback?code=good&state=${st}`, { redirect: 'manual' });
+    assert.equal(replay.headers.get('location'), '/admin?google=expired', 'state is single use');
+    await wait(300);
+    assert.ok(adm.google.connected && adm.google.email === 'nghia@example.com', 'admin sees Google account');
+    assert.ok(!JSON.stringify(adm).includes('rt1') && !JSON.stringify(pub).includes('at1'), 'tokens never leave the server');
+    await act({ type: 'sheet:config', url: 'https://docs.google.com/spreadsheets/d/PRIVATEID/edit?resourcekey=&gid=2088885041#gid=2088885041', approve: false, auto: false });
+    r = await call(admin, 'admin:action', { type: 'sheet:sync' }); // access token expires_in:1 → refresh path
+    assert.ok(r.ok && r.added === 1, 'private sheet imported via OAuth: ' + JSON.stringify(r));
+    await act({ type: 'google:logout' });
+    assert.equal(adm.google.connected, false, 'logout');
+    fakeGoogle.close();
 
     // MC page: limited role — can pick/answer questions, cannot drive slides or reset
     const mc = await connect();

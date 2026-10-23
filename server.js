@@ -19,6 +19,7 @@ const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const { hasProfanity } = require('./profanity');
 const sheetSync = require('./sheet-sync');
+const googleAuth = require('./google-auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
@@ -56,6 +57,7 @@ function freshState() {
     bigQr: false, // full-screen join QR on the projector
     pollView: {}, // slideId -> 'top3' | 'all' (what the screen shows once voting is closed)
     sheet: { url: '', auto: false, approve: false, lastAt: 0, lastMsg: '' }, // Google Sheet → Q&A import
+    google: null, // { refreshToken, accessToken, expiresAt, email } — server-side only, never sent to clients
     feedback: {}, // userId -> {...}
   };
 }
@@ -217,6 +219,7 @@ function adminState() {
     feedbackList: Object.values(state.feedback).sort((a, b) => b.at - a.at).slice(0, 200),
     online: io.engine.clientsCount,
     sheet: { ...state.sheet, url: state.sheet.url || config.qaSheetUrl || '' },
+    google: { configured: googleAuth.configured(), connected: !!state.google, email: state.google?.email || '' },
   };
 }
 
@@ -340,6 +343,31 @@ app.get('/healthz', (_req, res) => {
     rssMB: Math.round(m.rss / 1048576), cpuPct: Math.round(cpuPct), loopLagP99ms: Math.round(lagP99), uptimeSec: Math.round(process.uptime()),
   });
 });
+// ---------------------------------------------------------------- Google login (for private sheets)
+const googleRedirect = (req) => process.env.GOOGLE_REDIRECT_URI || `${joinUrl(req)}/auth/google/callback`;
+app.get('/auth/google', requireAdmin, (req, res) => {
+  if (!googleAuth.configured()) {
+    return res.status(400).type('html').send('<meta charset="utf-8"><body style="font-family:sans-serif;max-width:640px;margin:40px auto">'
+      + '<h2>Chưa cấu hình Google OAuth</h2><p>Đặt biến <b>GOOGLE_CLIENT_ID</b> và <b>GOOGLE_CLIENT_SECRET</b> trên Railway (xem README, mục "Đăng nhập Google").</p>'
+      + `<p>Redirect URI cần khai báo: <code>${googleRedirect(req)}</code></p><a href="/admin">← Về admin</a></body>`);
+  }
+  res.redirect(googleAuth.authorizeUrl(googleRedirect(req)));
+});
+app.get('/auth/google/callback', async (req, res) => {
+  if (req.query.error) return res.redirect('/admin?google=' + encodeURIComponent(String(req.query.error)));
+  if (!googleAuth.takeState(String(req.query.state || ''))) return res.redirect('/admin?google=expired');
+  try {
+    const g = await googleAuth.exchangeCode(String(req.query.code || ''), googleRedirect(req));
+    state.google = { ...g, refreshToken: g.refreshToken || state.google?.refreshToken || '' };
+    persist();
+    io.to('admin').emit('admin', adminState());
+    res.redirect('/admin?google=ok');
+  } catch (e) {
+    console.error('google login failed:', e.message);
+    res.redirect('/admin?google=' + encodeURIComponent(e.message));
+  }
+});
+
 app.get('/api/join', async (req, res) => {
   const url = joinUrl(req);
   const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'L', color: { dark: '#1a0010', light: '#ffffff' } });
@@ -746,6 +774,7 @@ io.on('connection', (socket) => {
         state.sheet.auto = !!a.auto;
         state.sheet.approve = !!a.approve;
         break;
+      case 'google:logout': state.google = null; break;
       case 'sheet:sync':
         // async: answer when the import finishes
         importSheet().then((r) => { ack(cb, r); broadcast(); });
@@ -795,7 +824,8 @@ io.on('connection', (socket) => {
       case 'reset:all':
         if (a.confirm !== 'RESET') return ack(cb, { ok: false, error: 'confirm required' });
         clearInterval(raceTick);
-        state = freshState();
+        // Wipe event data but keep the Google login and sheet settings.
+        state = Object.assign(freshState(), { google: state.google, sheet: state.sheet });
         io.emit('reset');
         break;
       default:
@@ -815,7 +845,11 @@ async function importSheet() {
   if (sheetBusy) return { ok: false, error: 'Đang đồng bộ…' };
   sheetBusy = true;
   try {
-    const { questions, skipped } = await sheetSync.fetchSheet(url);
+    // Logged in with Google → read through the Sheets API (works for private sheets);
+    // otherwise fall back to the public CSV export.
+    const { questions, skipped } = state.google
+      ? sheetSync.extractQuestions(await googleAuth.readRows(url, state.google))
+      : await sheetSync.fetchSheet(url);
     const have = new Set(state.questions.map((q) => q.sheetKey).filter(Boolean));
     let added = 0;
     for (const q of questions) {

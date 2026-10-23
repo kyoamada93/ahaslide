@@ -56,3 +56,6 @@ body.admin .bg { background: radial-gradient(circle at 80% 10%, #7a0050, transpa
 .sheet-box input[type=text] { margin: 10px 0 4px; font-size: 13px; padding: 10px 12px; }
 .sheet-box .row { margin: 8px 0 6px; }
 .sheet-box .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; font-weight: 500; }
+.google-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.google-btn { background: #fff; color: #1f1f1f; box-shadow: 0 2px 8px rgba(0,0,0,.25); text-decoration: none; }
+.ok-pill { background: rgba(81,207,102,.2); color: #b2f2bb; font-size: 13px; }
