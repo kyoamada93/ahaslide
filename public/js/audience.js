@@ -125,6 +125,12 @@
         <div class="kick">Vote · ${p.total} phiếu ${p.open ? '' : '· 🔒 Đã đóng'} <span id="pTimer" class="p-timer"></span></div>
         <h2>${esc(sl.title)}</h2>
         <p class="muted">${esc(sl.subtitle || '')}</p>
+        ${voted && p.counts && p.total ? (() => {
+          // After voting: the current top 3 (final once the vote closes).
+          const top = p.counts.map((c, i) => ({ c, i })).sort((a, b) => b.c - a.c || a.i - b.i).slice(0, 3);
+          return `<div class="top3"><div class="kick">${p.open ? '🔥 Top 3 hiện tại' : '🏆 Kết quả Top 3'}</div>${top.map((t, k) => `
+            <div class="top3-row ${my === t.i ? 'mine' : ''}"><span class="m">${['🥇', '🥈', '🥉'][k]}</span><span class="tt">${esc(sl.options[t.i])}</span><b>${Math.round((t.c / p.total) * 100)}%</b></div>`).join('')}</div>`;
+        })() : ''}
         <div class="opts">${sl.options.map((o, i) => {
           const showPc = voted && p.counts; // results may be hidden until the presenter reveals them
           const pc = showPc && p.total ? Math.round((p.counts[i] / p.total) * 100) : 0;

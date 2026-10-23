@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const assert = require('assert');
+const http = require('http');
 const { io } = require('socket.io-client');
 
 const PORT = 3900 + Math.floor(Math.random() * 90);
@@ -87,6 +88,10 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     await wait(5600);
     assert.equal(pub.poll.open, false, 'timer closed poll');
     assert.equal((await call(users[2], 'poll:vote', { slideId: 'topic-vote', option: 0 })).ok, false, 'closed poll');
+    assert.equal(pub.poll.view, 'top3', 'closed poll shows top 3 by default');
+    await act({ type: 'poll:view', slideId: 'topic-vote' });
+    assert.equal(pub.poll.view, 'all', 'admin can switch to full results');
+    await act({ type: 'poll:view', slideId: 'topic-vote' });
     await act({ type: 'poll:toggle', slideId: 'topic-vote' });
     assert.equal(pub.poll.open, true, 'reopened');
     await act({ type: 'poll:toggle', slideId: 'topic-vote' });
@@ -123,6 +128,36 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     await act({ type: 'qa:add', text: 'Câu hỏi chờ duyệt?', pending: true });
     assert.ok(!pub.questions.find((q) => q.text === 'Câu hỏi chờ duyệt?'), 'pending admin question hidden');
     assert.equal((await call(users[1], 'admin:action', { type: 'qa:add', text: 'hack' })).ok, false, 'audience cannot add as admin');
+    // Google Sheet import (a local CSV stands in for the Form_Responses sheet)
+    let csv = 'Timestamp,Câu hỏi của bạn,Bạn muốn câu hỏi được xử lý thế nào?\n'
+      + '10/19/2026 17:00:24,"Chính sách hỗ trợ hội nghị, chi phí đi lại?",Cả hai\n'
+      + '10/21/2026 8:17:42,"KPI năm 2026 của AI&Data là gì?",Trả lời trực tiếp trong buổi Town Hall\n'
+      + '10/21/2026 9:00:00,Chỉ cần trả lời qua email,Trả lời qua email\n';
+    const sheetSrv = http.createServer((req, res) => {
+      if (req.url.startsWith('/private')) { res.setHeader('Content-Type', 'text/html'); return res.end('<html>login</html>'); }
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.end(csv);
+    }).listen(0);
+    await new Promise((r) => sheetSrv.once('listening', r));
+    const sheetUrl = `http://localhost:${sheetSrv.address().port}/sheet.csv`;
+    await act({ type: 'sheet:config', url: sheetUrl, approve: false, auto: false });
+    let r = await call(admin, 'admin:action', { type: 'sheet:sync' });
+    assert.ok(r.ok && r.added === 2 && r.skipped === 1, 'imported 2, skipped email-only: ' + JSON.stringify(r));
+    await wait(300);
+    assert.equal(adm.questions.filter((q) => q.name === 'Google Form' && q.status === 'pending').length, 2, 'imported as pending');
+    r = await call(admin, 'admin:action', { type: 'sheet:sync' });
+    assert.equal(r.added, 0, 'no duplicates on re-sync');
+    csv += '10/22/2026 10:00:00,"Câu hỏi mới từ form?",Cả hai\n';
+    await act({ type: 'sheet:config', url: sheetUrl, approve: true, auto: false });
+    r = await call(admin, 'admin:action', { type: 'sheet:sync' });
+    assert.equal(r.added, 1, 'picks up new rows');
+    await wait(300);
+    assert.ok(pub.questions.find((q) => q.text === 'Câu hỏi mới từ form?'), 'approve-on-import goes live');
+    await act({ type: 'sheet:config', url: sheetUrl.replace('/sheet.csv', '/private'), approve: false, auto: false });
+    r = await call(admin, 'admin:action', { type: 'sheet:sync' });
+    assert.ok(!r.ok && /chia sẻ/.test(r.error), 'private sheet explained');
+    assert.equal((await call(users[2], 'admin:action', { type: 'sheet:sync' })).ok, false, 'audience cannot sync');
+    sheetSrv.close();
+
     // MC page: limited role — can pick/answer questions, cannot drive slides or reset
     const mc = await connect();
     assert.equal((await call(mc, 'admin:auth', 'mc-key')).role, 'mc');

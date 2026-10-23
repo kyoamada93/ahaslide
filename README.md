@@ -6,7 +6,7 @@
 |---|-------|-----------------------|----------------|
 | 1 | **Check-in** | Quét QR → nhập tên, team | QR lớn, số người check-in, tên hiện realtime |
 | 2 | **Word cloud** "Bạn mong muốn gì ở Townhall?" | Nhập tối đa 3 từ khoá (lọc từ tục tiếng Việt/Anh) | Word cloud cập nhật trực tiếp |
-| 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic (đổi được đến khi đóng vote) | Biểu đồ cột realtime; có thể **ẩn kết quả đến khi công bố** và **hẹn giờ tự đóng vote** |
+| 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic; vote xong thấy **Top 3** | Biểu đồ cột realtime; **đóng vote → tự hiện 🏆 Top 3**; có thể ẩn kết quả đến khi công bố và hẹn giờ tự đóng vote |
 | 4 | **Mục: Food of Thought** | Xem agenda, gửi câu hỏi | Agenda Insight · Highlight · People |
 | 6 | **Q&A realtime** (luôn **ẩn danh**) | Gửi câu hỏi, upvote câu đã duyệt | Chỉ hiện câu hỏi **moderator đã Approve**; câu Highlight hiện to |
 | 7 | **Đua vịt** | Bấm "Tham gia đua", **chọn màu vịt**, tap liên tục để vịt tăng tốc (thanh tốc độ, BOOST, vị trí realtime) | Dòng sông dài, camera bám theo vịt dẫn đầu, đèn xuất phát, bảng dẫn đầu, mini-map, podium + pháo giấy |
@@ -79,6 +79,16 @@ Nếu mở `/screen` qua tên miền công khai thì QR tự lấy tên miền �
 | `PUBLIC_URL` | tự phát hiện (trên Render dùng `RENDER_EXTERNAL_URL`) | URL khán giả dùng (mã hoá trong QR) |
 | `DATA_DIR` | `./data` | Nơi lưu `state.json` (tự lưu mỗi giây, khởi động lại không mất dữ liệu) |
 | `CONFIG_FILE` | `./config.json` | File cấu hình chương trình |
+
+## Lấy câu hỏi từ Google Sheet (Google Form)
+
+Trang admin → cột Q&A → **📄 Lấy câu hỏi từ Google Sheet**:
+
+1. Trong Google Sheet bấm **Chia sẻ → Bất kỳ ai có đường liên kết → Người xem** (hoặc *Tệp → Chia sẻ → Xuất bản lên web → CSV*).
+2. Dán link sheet (tab `Form_Responses`, giữ nguyên `#gid=` trong link). Mặc định đã điền sẵn từ `config.json` → `qaSheetUrl`.
+3. Bấm **🔄 Đồng bộ ngay**. Tuỳ chọn *Duyệt luôn* (hiện lên màn hình ngay) và *Tự động đồng bộ mỗi 1 phút*.
+
+Cột được nhận theo tiêu đề: "Câu hỏi…" là nội dung, "Timestamp" là thời gian, cột "…xử lý thế nào" dùng để lọc — chỉ lấy câu chọn *Cả hai* hoặc *Trả lời trực tiếp trong buổi Town Hall*. Câu đã lấy không bị lấy trùng khi đồng bộ lại; câu có từ ngữ không phù hợp được gắn ⚠️ cho moderator.
 
 ## So với AhaSlides
 

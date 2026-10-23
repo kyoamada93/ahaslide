@@ -18,6 +18,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const { hasProfanity } = require('./profanity');
+const sheetSync = require('./sheet-sync');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
@@ -53,6 +54,8 @@ function freshState() {
     race: freshRace(),
     raceHistory: [],
     bigQr: false, // full-screen join QR on the projector
+    pollView: {}, // slideId -> 'top3' | 'all' (what the screen shows once voting is closed)
+    sheet: { url: '', auto: false, approve: false, lastAt: 0, lastMsg: '' }, // Google Sheet → Q&A import
     feedback: {}, // userId -> {...}
   };
 }
@@ -126,6 +129,7 @@ function pollResults(slideId, full = false) {
     open: state.pollOpen[slideId] !== false,
     hidden,
     endsIn: endsAt && state.pollOpen[slideId] !== false ? Math.max(0, endsAt - Date.now()) : 0,
+    view: state.pollView[slideId] || 'top3',
   };
 }
 
@@ -212,6 +216,7 @@ function adminState() {
     feedback: feedbackSummary(),
     feedbackList: Object.values(state.feedback).sort((a, b) => b.at - a.at).slice(0, 200),
     online: io.engine.clientsCount,
+    sheet: { ...state.sheet, url: state.sheet.url || config.qaSheetUrl || '' },
   };
 }
 
@@ -735,6 +740,16 @@ io.on('connection', (socket) => {
         break;
       }
       case 'qr:toggle': state.bigQr = !state.bigQr; break;
+      case 'poll:view': state.pollView[a.slideId] = (state.pollView[a.slideId] || 'top3') === 'top3' ? 'all' : 'top3'; break;
+      case 'sheet:config':
+        state.sheet.url = clean(a.url, 500);
+        state.sheet.auto = !!a.auto;
+        state.sheet.approve = !!a.approve;
+        break;
+      case 'sheet:sync':
+        // async: answer when the import finishes
+        importSheet().then((r) => { ack(cb, r); broadcast(); });
+        return;
       case 'qa:delete':
         state.questions = state.questions.filter((x) => x.id !== a.qid);
         break;
@@ -787,11 +802,45 @@ io.on('connection', (socket) => {
         return ack(cb, { ok: false, error: 'unknown action' });
     }
     ack(cb, { ok: true });
-    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle'].includes(a.type));
+    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle', 'poll:view'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));
 });
+
+// ---------------------------------------------------------------- Google Sheet → Q&A
+let sheetBusy = false;
+async function importSheet() {
+  const url = state.sheet.url || config.qaSheetUrl || '';
+  if (sheetBusy) return { ok: false, error: 'Đang đồng bộ…' };
+  sheetBusy = true;
+  try {
+    const { questions, skipped } = await sheetSync.fetchSheet(url);
+    const have = new Set(state.questions.map((q) => q.sheetKey).filter(Boolean));
+    let added = 0;
+    for (const q of questions) {
+      if (have.has(q.key)) continue;
+      state.questions.push({
+        id: newId(), userId: null, name: 'Google Form', text: q.text, target: '', sheetKey: q.key,
+        flagged: PROFANITY_FILTER && hasProfanity(q.text),
+        status: state.sheet.approve ? 'approved' : 'pending', highlighted: false, upvotes: [], createdAt: q.at,
+      });
+      added++;
+    }
+    state.sheet.lastAt = Date.now();
+    state.sheet.lastMsg = `+${added} câu mới · ${questions.length} câu trong sheet${skipped ? ` · bỏ qua ${skipped} câu chỉ cần trả lời sau` : ''}`;
+    return { ok: true, added, total: questions.length, skipped, msg: state.sheet.lastMsg };
+  } catch (e) {
+    state.sheet.lastAt = Date.now();
+    state.sheet.lastMsg = '⚠️ ' + (e.name === 'TimeoutError' ? 'Google Sheet không phản hồi' : e.message);
+    return { ok: false, error: state.sheet.lastMsg };
+  } finally {
+    sheetBusy = false;
+  }
+}
+setInterval(() => {
+  if (state.sheet.auto && (state.sheet.url || config.qaSheetUrl)) importSheet().then((r) => { if (r.added) broadcast(); else persist(); });
+}, 60000);
 
 // Auto-close polls whose timer ran out.
 setInterval(() => {

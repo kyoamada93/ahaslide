@@ -77,3 +77,9 @@ body { min-height: 100%; overscroll-behavior: none; }
 .swatches button.on { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.35); transform: scale(1.1); }
 .p-timer { color: #fff; }
 .p-timer.urgent { color: #ff8787; }
+.top3 { margin: 14px 0 4px; padding: 12px 14px; border-radius: 14px; background: rgba(255,212,59,.12); border: 1px solid rgba(255,212,59,.45); }
+.top3 .kick { color: #ffe066; margin-bottom: 6px; }
+.top3-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; font-weight: 600; line-height: 1.3; }
+.top3-row .m { font-size: 22px; }
+.top3-row b { color: #ffe066; }
+.top3-row.mine .tt { text-decoration: underline; text-decoration-color: #ff6fb5; text-underline-offset: 3px; }

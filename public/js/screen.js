@@ -99,6 +99,7 @@
     },
     poll(el, sl) {
       el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p><div class="poll-status" id="pollStatus"></div>
+        <div class="poll-top3 hidden" id="pollTop3"></div>
         <div class="poll-box glass" id="poll" data-panel>${sl.options.map((o, i) => `
           <div class="opt" data-i="${i}"><div class="num">${i + 1}</div>
             <div class="bar-wrap"><div class="bar" style="width:0"></div><div class="label">${esc(o)}</div></div>
@@ -198,6 +199,21 @@
       const max = Math.max(...shownCounts, 1);
       pollStatus(el);
       el.classList.toggle('results-hidden', !!hidden);
+      // Voting closed + results public → the three leading topics, big.
+      const top3 = !open && !hidden && total > 0 && S.poll.view !== 'all';
+      el.classList.toggle('show-top3', top3);
+      if (top3) {
+        const ranked = shownCounts.map((c, i) => ({ c, i })).sort((a, b) => b.c - a.c || a.i - b.i).slice(0, 3);
+        const html = ranked.map((r, k) => `
+          <div class="t3 t3-${k + 1} glass">
+            <div class="t3-medal">${['🥇', '🥈', '🥉'][k]}</div>
+            <div class="t3-body"><div class="t3-title">${esc(S.slide.options[r.i])}</div>
+              <div class="t3-bar"><i style="width:${Math.round((r.c / Math.max(1, ranked[0].c)) * 100)}%"></i></div></div>
+            <div class="t3-val">${r.c}<small>${Math.round((r.c / total) * 100)}% · ${r.c} phiếu</small></div>
+          </div>`).join('');
+        const box = $('#pollTop3', el);
+        if (box._html !== html) { box.innerHTML = `<div class="t3-head">🏆 Top 3 chủ đề được yêu thích nhất</div>${html}`; box._html = html; }
+      }
       el.querySelectorAll('.opt').forEach((row, i) => {
         const c = shownCounts[i];
         row.querySelector('.bar').style.width = (total ? (c / max) * 100 : 0) + '%';

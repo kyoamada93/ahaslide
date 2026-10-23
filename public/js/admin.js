@@ -58,7 +58,23 @@
   addEventListener('resize', fitPreview);
 
   socket.on('state', (s) => { if (!s.slides) return; S = s; renderMain(); });
-  socket.on('admin', (a) => { A = a; renderMain(); renderQa(); });
+  socket.on('admin', (a) => { A = a; renderMain(); renderQa(); renderSheet(); });
+
+  // Google Sheet import box (admin page only). Inputs are only filled while untouched.
+  let sheetDirty = false;
+  ['sheetUrl', 'sheetApprove', 'sheetAuto'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => { sheetDirty = true; }));
+  function renderSheet() {
+    if (!A?.sheet || !document.getElementById('sheetBox')) return;
+    if (!sheetDirty) {
+      $('#sheetUrl').value = A.sheet.url || '';
+      $('#sheetApprove').checked = !!A.sheet.approve;
+      $('#sheetAuto').checked = !!A.sheet.auto;
+    }
+    $('#sheetStatus').textContent = A.sheet.lastAt
+      ? `Lần cuối ${new Date(A.sheet.lastAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}: ${A.sheet.lastMsg}${A.sheet.auto ? ' · tự động mỗi 1 phút' : ''}`
+      : 'Chưa đồng bộ lần nào.';
+  }
+  const sheetSettings = () => ({ type: 'sheet:config', url: $('#sheetUrl').value.trim(), approve: $('#sheetApprove').checked, auto: $('#sheetAuto').checked });
   socket.on('race:frame', () => {});
 
   async function action(a) {
@@ -97,6 +113,18 @@
         return;
       }
       case 'qr-toggle': return action({ type: 'qr:toggle' });
+      case 'sheet-save': { const r = await action(sheetSettings()); if (r.ok) { sheetDirty = false; toast('Đã lưu'); } return; }
+      case 'sheet-sync': {
+        await action(sheetSettings());
+        sheetDirty = false;
+        b.disabled = true; b.textContent = '⏳ Đang đồng bộ…';
+        const r = await emit('admin:action', { type: 'sheet:sync' });
+        b.disabled = false; b.textContent = '🔄 Đồng bộ ngay';
+        toast(r.ok ? `✅ ${r.msg}` : r.error, 4000);
+        if (r.ok && r.added && !$('#sheetApprove').checked) { qaTab = 'pending'; renderQa(); }
+        return;
+      }
+      case 'poll-view': return action({ type: 'poll:view', slideId: d.s });
       case 'qa-hl': return action({ type: 'qa:highlight', qid: d.id });
       case 'qa-del': if (confirm('Xoá câu hỏi này?')) action({ type: 'qa:delete', qid: d.id }); return;
       case 'tab': qaTab = d.t; return renderQa();
@@ -152,6 +180,7 @@
       return `<div class="row"><button class="btn small ${p.open ? 'warn' : 'ok'}" data-a="poll-toggle" data-s="${sl.id}">${p.open ? '🔒 Đóng vote' : '🟢 Mở lại vote'}</button>
         <button class="btn small ${p.hidden ? 'ok' : 'ghost'}" data-a="poll-reveal" data-s="${sl.id}">${p.hidden ? '👁 Công bố kết quả' : '🙈 Ẩn kết quả'}</button>
         <button class="btn small bad" data-a="poll-reset" data-s="${sl.id}">Reset vote</button><span class="pill">${p.total} phiếu</span></div>
+        ${!p.open && !p.hidden ? `<div class="row"><span class="muted tiny">Vote đã đóng → màn hình đang hiện:</span><button class="btn small ${p.view === 'all' ? 'ghost' : 'ok'}" data-a="poll-view" data-s="${sl.id}">${p.view === 'all' ? '📊 Toàn bộ (bấm để xem 🏆 Top 3)' : '🏆 Top 3 (bấm để xem 📊 toàn bộ)'}</button></div>` : '<p class="muted tiny">💡 Bấm 🔒 Đóng vote → màn hình tự hiện 🏆 Top 3.</p>'}
         <div class="row"><span class="muted tiny">Hẹn giờ đóng vote:</span>${[30, 60, 120, 300].map((t) => `<button class="btn small ghost" data-a="poll-timer" data-s="${sl.id}" data-t="${t}">${t < 60 ? t + 's' : t / 60 + ' phút'}</button>`).join('')}
         ${left ? `<span class="pill">⏱ còn ~${left}s</span>` : ''}</div>
         <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}</div>`).join('')}</div>`;

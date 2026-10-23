@@ -243,3 +243,22 @@ body.light .bg-fx { display: block; opacity: .9; }
 /* 3D AI&Data logo, top-left like the design mockup */
 .top { gap: 18px; align-items: center; }
 .top .brand-logo { height: 58px; width: auto; filter: drop-shadow(0 4px 10px rgba(28,100,200,.25)); }
+
+/* Top 3 after voting closes */
+.poll.show-top3 .poll-box { display: none; }
+.poll.show-top3 .poll-top3 { display: flex !important; }
+.poll-top3 { flex: 1; flex-direction: column; justify-content: center; gap: 22px; }
+.t3-head { font-size: 30px; font-weight: 900; color: #8a0052; margin-bottom: 4px; }
+.t3 { display: grid; grid-template-columns: 110px 1fr 200px; align-items: center; gap: 24px; padding: 26px 30px; animation: t3-in .6s cubic-bezier(.2,.8,.2,1) both; }
+.t3-2 { animation-delay: .15s; } .t3-3 { animation-delay: .3s; }
+@keyframes t3-in { from { opacity: 0; transform: translateY(30px) scale(.97); } }
+.t3-medal { font-size: 80px; line-height: 1; text-align: center; }
+.t3-title { font-size: clamp(24px, 2.1vw, 40px); font-weight: 800; color: #3d0029; line-height: 1.2; }
+.t3-1 { border: 3px solid #ffd43b !important; box-shadow: 0 16px 50px rgba(240,140,0,.25) !important; }
+.t3-1 .t3-title { font-size: clamp(28px, 2.5vw, 48px); }
+.t3-bar { margin-top: 14px; height: 14px; border-radius: 7px; background: rgba(165,0,100,.1); overflow: hidden; }
+.t3-bar i { display: block; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #ff8ac2, #d82d8b); animation: t3-bar 1.2s .4s cubic-bezier(.2,.8,.2,1) both; }
+.t3-1 .t3-bar i { background: linear-gradient(90deg, #ffe066, #f08c00); }
+@keyframes t3-bar { from { width: 0; } }
+.t3-val { text-align: right; font-size: 64px; font-weight: 900; color: #a50064; line-height: 1; }
+.t3-val small { display: block; font-size: 18px; font-weight: 700; color: #8a3d6c; margin-top: 8px; }
