@@ -760,7 +760,7 @@ io.on('connection', (socket) => {
       }
       case 'qa:add': {
         // Organisers can seed questions; they go straight to the live queue.
-        const t = clean(a.text, 300);
+        const t = clean(a.text, 1000);
         if (t.length < 3) return ack(cb, { ok: false, error: 'Câu hỏi quá ngắn' });
         state.questions.push({
           id: newId(), userId: null, name: 'Ban tổ chức', text: t, target: '', flagged: false,
@@ -852,10 +852,15 @@ async function importSheet() {
       : composio.configured()
         ? sheetSync.extractQuestions(await composio.readRows(url))
         : await sheetSync.fetchSheet(url);
-    const have = new Set(state.questions.map((q) => q.sheetKey).filter(Boolean));
+    const have = new Map(state.questions.filter((q) => q.sheetKey).map((q) => [q.sheetKey, q]));
     let added = 0;
     for (const q of questions) {
-      if (have.has(q.key)) continue;
+      const known = have.get(q.key);
+      if (known) {
+        // Same row seen before: refresh the text (e.g. a long answer once cut at 300 chars), keep its status.
+        if (known.text !== q.text && q.text.length > known.text.length) known.text = q.text;
+        continue;
+      }
       state.questions.push({
         id: newId(), userId: null, name: 'Google Form', text: q.text, target: '', sheetKey: q.key,
         flagged: PROFANITY_FILTER && hasProfanity(q.text),

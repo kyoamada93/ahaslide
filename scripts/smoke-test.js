@@ -171,6 +171,12 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     assert.equal(adm.questions.filter((q) => q.name === 'Google Form' && q.status === 'pending').length, 2, 'imported as pending');
     r = await call(admin, 'admin:action', { type: 'sheet:sync' });
     assert.equal(r.added, 0, 'no duplicates on re-sync');
+    // a long form answer is kept whole (not cut at 300 chars)
+    const longQ = 'Câu hỏi rất dài về chiến lược dữ liệu ' + 'và cách các team phối hợp '.repeat(20) + '— kết thúc ở đây?';
+    csv += `10/22/2026 09:00:00,"${longQ}",Cả hai\n`;
+    r = await call(admin, 'admin:action', { type: 'sheet:sync' });
+    await wait(300);
+    assert.ok(longQ.length > 300 && adm.questions.some((q) => q.text === longQ), 'long question imported in full');
     csv += '10/22/2026 10:00:00,"Câu hỏi mới từ form?",Cả hai\n';
     await act({ type: 'sheet:config', url: sheetUrl, approve: true, auto: false });
     r = await call(admin, 'admin:action', { type: 'sheet:sync' });

@@ -55,7 +55,7 @@ function extractQuestions(rows) {
   const questions = [];
   let skipped = 0;
   for (const r of rows.slice(1)) {
-    const text = String(r[qCol] || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const text = String(r[qCol] || '').replace(/\s+/g, ' ').trim().slice(0, 1000); // form answers can be long; never cut them at 300
     if (text.length < 3) continue;
     const handling = hCol >= 0 ? norm(r[hCol]) : '';
     // Keep "Cả hai" / "Trả lời trực tiếp trong buổi Town Hall"; skip answers wanted only by email etc.
@@ -63,7 +63,8 @@ function extractQuestions(rows) {
     const ts = tCol >= 0 ? String(r[tCol] || '').trim() : '';
     const parsed = Date.parse(ts);
     questions.push({
-      key: crypto.createHash('sha1').update(ts + '|' + text).digest('hex').slice(0, 16),
+      // key uses the first 300 chars so rows imported before the limit was raised keep their identity
+      key: crypto.createHash('sha1').update(ts + '|' + text.slice(0, 300)).digest('hex').slice(0, 16),
       text,
       at: Number.isFinite(parsed) ? parsed : Date.now(),
     });

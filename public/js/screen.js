@@ -225,9 +225,11 @@
     qa(el) {
       const qs = S.questions;
       const feat = qs.find((q) => q.highlighted) || qs.find((q) => q.status === 'approved');
-      $('#qaFeature', el).innerHTML = feat
+      const featBox = $('#qaFeature', el);
+      const featHtml = feat
         ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— ${feat.name === 'Ẩn danh' ? 'Câu hỏi ẩn danh' : esc(feat.name)} · ▲ ${feat.upvotes}</div>`
         : `<div class="q" style="opacity:.7">Chưa có câu hỏi nào được duyệt.<br>Hãy gửi câu hỏi từ điện thoại nhé! 📱</div>`;
+      if (featBox._html !== featHtml) { featBox.innerHTML = featHtml; featBox._html = featHtml; fitText(featBox); }
       const rest = qs.filter((q) => q !== feat).slice(0, 7);
       // Only questions that just appeared get the pop-in; upvote updates must not replay it.
       const html = rest.map((q) => `
@@ -254,6 +256,20 @@
     $('#pollStatus', el).innerHTML = `${p.open ? '🟢 Đang mở vote' : '🔒 Đã đóng vote'} · <b>${p.total}</b> phiếu${p.hidden ? ' · 🙈 Kết quả sẽ công bố sau' : ''}${timer}`;
   }
   setInterval(() => { if (S?.slide.type === 'poll' && S.poll.localEnd && stage.firstChild) pollStatus(stage.firstChild); }, 250);
+
+  // Shrink the featured question until the whole panel fits (long questions must never overflow).
+  function fitText(box) {
+    const q = box.querySelector('.q');
+    if (!q) return;
+    const max = Math.min(58, Math.max(30, innerWidth * 0.03)), min = 16;
+    let size = max;
+    q.style.fontSize = size + 'px';
+    while (size > min && box.scrollHeight > box.clientHeight + 1) {
+      size -= 2;
+      q.style.fontSize = size + 'px';
+    }
+  }
+  addEventListener('resize', () => { const b = document.getElementById('qaFeature'); if (b) fitText(b); });
 
   function drawCloud(words) {
     const canvas = $('#cloud');

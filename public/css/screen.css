@@ -262,3 +262,9 @@ body.light .bg-fx { display: block; opacity: .9; }
 @keyframes t3-bar { from { width: 0; } }
 .t3-val { text-align: right; font-size: 64px; font-weight: 900; color: #a50064; line-height: 1; }
 .t3-val small { display: block; font-size: 18px; font-weight: 700; color: #8a3d6c; margin-top: 8px; }
+
+/* Q&A: featured question is auto-fitted (see fitText); list items clamp to 3 lines */
+.qa-grid { grid-template-rows: minmax(0, 1fr); }
+.qa-grid .feature { overflow: hidden; min-height: 0; }
+.qa-grid .feature .q { overflow-wrap: anywhere; }
+.qa-grid .item .t { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
