@@ -133,7 +133,9 @@ Server chỉ xin quyền **đọc** Google Sheets (`spreadsheets.readonly`). Tok
 
 ## Tuỳ chỉnh nội dung
 
-Sửa `config.json` (khởi động lại server để áp dụng):
+**Sửa chữ ngay trên trang admin (không cần deploy):** chọn slide → mở **✏️ Sửa nội dung slide này** → sửa tiêu đề, mô tả, các lựa chọn vote (mỗi dòng 1 lựa chọn) hoặc agenda (`# Tên mục` rồi các ý bên dưới) → **💾 Lưu & hiển thị ngay**. Tên sự kiện sửa ở cột trái. Bản sửa lưu ở `DATA_DIR/content.json` (trên volume), không mất khi deploy lại hay bấm *Reset toàn bộ dữ liệu*; **↺ Về nội dung gốc** quay lại nội dung trong `config.json`.
+
+Muốn thêm/bớt slide hoặc đổi cấu hình khác thì sửa `config.json` (khởi động lại server để áp dụng):
 
 - Tiêu đề, câu hỏi word cloud, danh sách **topic vote** (`slides[].options`).
 - Thông tin speaker: `speaker`, `topic`, `role`, `photo` (vd. đặt ảnh ở `public/assets/dung.jpg` rồi điền `"/assets/dung.jpg"`).

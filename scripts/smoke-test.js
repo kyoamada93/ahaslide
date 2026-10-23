@@ -276,6 +276,30 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     assert.equal((await fetch(`${URL}/api/brand/ai-data-logo?key=${KEY}`, { method: 'DELETE' })).status, 200);
     assert.ok((await fetch(`${URL}/brand/ai-data-logo`)).headers.get('content-type').includes('png'), 'default restored');
 
+    // slide text edits: live on screen + phones, survive reset:all, revert to config.json
+    const rev0 = pub.rev;
+    assert.equal((await call(admin, 'admin:action', { type: 'content:save', slideId: 'topic-vote', fields: { title: '' } })).ok, false, 'empty title rejected');
+    assert.equal((await call(admin, 'admin:action', { type: 'content:save', slideId: 'topic-vote', fields: { options: ['only one'] } })).ok, false, 'poll needs 2 options');
+    await act({ type: 'content:save', slideId: 'topic-vote', fields: { title: 'Vote mới', subtitle: 'Mô tả mới', options: ['A', 'B', 'C'] } });
+    await act({ type: 'content:save', slideId: 'food-of-thought', fields: { agenda: [{ title: 'X', items: ['x1', '', 'x2'] }] } });
+    await act({ type: 'content:save', event: { eventTitle: 'Townhall 2026' } });
+    assert.ok(pub.rev > rev0, 'rev bumps so clients rebuild');
+    assert.equal(pub.slides.find((x) => x.id === 'topic-vote').title, 'Vote mới');
+    assert.equal(pub.eventTitle, 'Townhall 2026');
+    await act({ type: 'goto', index: 2 });
+    let phone0 = null; users[0].on('state', (st) => { phone0 = st; });
+    await act({ type: 'poll:toggle', slideId: 'topic-vote' }); await act({ type: 'poll:toggle', slideId: 'topic-vote' });
+    assert.deepEqual(phone0.slide.options, ['A', 'B', 'C'], 'phones get edited options');
+    assert.ok(Object.values(adm.polls['topic-vote'].counts).length === 3, 'results follow the new option list');
+    const saved = JSON.parse(fs.readFileSync(path.join(dataDir, 'content.json'), 'utf8'));
+    assert.deepEqual(saved.slides['food-of-thought'].agenda, [{ title: 'X', items: ['x1', 'x2'] }], 'edits written to the data volume');
+    await act({ type: 'reset:all', confirm: 'RESET' });
+    assert.equal(pub.slides.find((x) => x.id === 'topic-vote').title, 'Vote mới', 'reset keeps edited text');
+    await act({ type: 'content:revert', slideId: 'topic-vote' });
+    await act({ type: 'content:revert', event: true });
+    assert.equal(pub.slides.find((x) => x.id === 'topic-vote').title, 'Vote chủ đề sharing bạn yêu thích nhất', 'revert to config');
+    assert.equal(pub.eventTitle, 'Townhall AI & Data');
+
     console.log('✅ smoke test passed');
     users.forEach((s) => s.close()); admin.close();
   } catch (e) {

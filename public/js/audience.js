@@ -23,7 +23,7 @@
   // ---------------------------------------------------------------- render
   function signature() {
     const sl = S.slide;
-    const base = [sl.id, !!ME?.user, ME?.user?.name];
+    const base = [sl.id, S.rev, !!ME?.user, ME?.user?.name];
     switch (sl.type) {
       case 'wordcloud': return JSON.stringify([base, ME?.words?.[sl.id]]);
       case 'poll': { const p = S.poll; return JSON.stringify([base, ME?.votes?.[sl.id], p.counts, p.total, p.open, p.hidden, !!p.endsIn]); }

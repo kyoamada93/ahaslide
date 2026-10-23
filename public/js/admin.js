@@ -62,7 +62,7 @@
   }
   addEventListener('resize', fitPreview);
 
-  socket.on('state', (s) => { if (!s.slides) return; S = s; renderMain(); });
+  socket.on('state', (s) => { if (!s.slides) return; S = s; renderMain(); renderEditor(); });
   socket.on('admin', (a) => { A = a; renderMain(); renderQa(); renderSheet(); });
 
   // Google Sheet import box (admin page only). Inputs are only filled while untouched.
@@ -156,6 +156,33 @@
         toast(r.ok ? 'Đã trả về mặc định' : 'Lỗi');
         return renderBrand();
       }
+      case 'content-save': {
+        const fields = {};
+        $('#editForm').querySelectorAll('[data-f]').forEach((el) => {
+          const k = el.dataset.f;
+          fields[k] = k === 'options' ? el.value.split('\n').map((x) => x.trim()).filter(Boolean) : k === 'agenda' ? textToAgenda(el.value) : el.value;
+        });
+        document.activeElement?.blur();
+        const r = await action({ type: 'content:save', slideId: S.slide.id, fields });
+        if (r.ok) toast('Đã lưu — màn hình & điện thoại cập nhật ngay');
+        return;
+      }
+      case 'content-revert':
+        if (!confirm('Đưa slide này về nội dung gốc (config.json)?')) return;
+        document.activeElement?.blur(); editSig = '';
+        if ((await action({ type: 'content:revert', slideId: S.slide.id })).ok) toast('Đã về nội dung gốc');
+        return;
+      case 'event-save': {
+        const event = {};
+        $('#eventEdit').querySelectorAll('[data-e]').forEach((el) => { event[el.dataset.e] = el.value; });
+        document.activeElement?.blur();
+        if ((await action({ type: 'content:save', event })).ok) toast('Đã lưu tên sự kiện');
+        return;
+      }
+      case 'event-revert':
+        document.activeElement?.blur(); editSig = '';
+        if ((await action({ type: 'content:revert', event: true })).ok) toast('Đã về tên gốc');
+        return;
       case 'race-reset': if (confirm('Xoá danh sách người chơi và tạo cuộc đua mới?')) action({ type: 'race:reset' }); return;
     }
   });
@@ -170,7 +197,7 @@
     $('#stOnline').textContent = A.online;
     $('#curType').textContent = TYPE_LABEL[S.slide.type] || S.slide.type;
     $('#slideList').innerHTML = S.slides.map((sl, i) => `<li data-a="goto" data-i="${i}" class="${i === S.slideIndex ? 'on' : ''}"><span class="i">${i + 1}</span><div>${esc(sl.title)}${sl.speaker ? ' — ' + esc(sl.speaker) : ''}<small>${TYPE_LABEL[sl.type] || sl.type}</small></div></li>`).join('');
-    const sig = JSON.stringify([S.slide.id, A.words, A.hiddenWords, A.polls, A.race, A.feedback, A.feedbackList.length, A.users.length]);
+    const sig = JSON.stringify([S.slide.id, S.rev, A.words, A.hiddenWords, A.polls, A.race, A.feedback, A.feedbackList.length, A.users.length]);
     if (sig === lastControlsSig) return;
     lastControlsSig = sig;
     $('#controls').innerHTML = (controls[S.slide.type] || (() => '<p class="muted">Không có điều khiển riêng cho slide này.</p>'))(S.slide);
@@ -218,6 +245,44 @@
         <div class="fb-list">${A.feedbackList.map((x) => `<div><b>${x.anonymous ? 'Ẩn danh' : esc(x.name)}</b> · ${'★'.repeat(x.overall)}${x.liked ? `<br>👍 ${esc(x.liked)}` : ''}${x.suggestion ? `<br>💡 ${esc(x.suggestion)}` : ''}${x.nextTopics ? `<br>📚 ${esc(x.nextTopics)}` : ''}</div>`).join('')}</div>`;
     },
   };
+
+  // ---------------------------------------------------------------- slide text editor
+  const FIELD_LABEL = { kicker: 'Nhãn nhỏ phía trên (VD: Mục)', title: 'Tiêu đề *', subtitle: 'Dòng mô tả', speaker: 'Speaker', role: 'Chức danh speaker', topic: 'Chủ đề' };
+  const FIELDS_BY_TYPE = { speaker: ['kicker', 'title', 'speaker', 'role', 'topic'] };
+  let editSig = '';
+  // Agenda as plain text: "# Section" starts a block, every other line is an item under it.
+  const agendaToText = (ag = []) => ag.map((g) => [`# ${g.title}`, ...g.items].join('\n')).join('\n\n');
+  const textToAgenda = (t) => {
+    const out = [];
+    for (const raw of t.split('\n')) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith('#')) out.push({ title: line.replace(/^#+\s*/, ''), items: [] });
+      else { if (!out.length) out.push({ title: '', items: [] }); out.at(-1).items.push(line.replace(/^[-•*]\s*/, '')); }
+    }
+    return out;
+  };
+
+  function renderEditor() {
+    if (isMod || !S) return;
+    const box = $('#editForm');
+    const ev = $('#eventEdit');
+    // Do not wipe what the admin is typing when a state update arrives.
+    if (document.activeElement?.closest('.edit-box')) return;
+    const sig = JSON.stringify([S.slide.id, S.rev]);
+    if (sig === editSig) return;
+    editSig = sig;
+    const sl = S.slide;
+    const fields = FIELDS_BY_TYPE[sl.type] || ['title', 'subtitle'];
+    box.innerHTML = fields.map((k) => `<label>${FIELD_LABEL[k]}</label><input type="text" maxlength="300" data-f="${k}" value="${esc(sl[k] || '')}">`).join('')
+      + (sl.type === 'poll' ? `<label>Các lựa chọn vote — mỗi dòng 1 lựa chọn (2–20)</label><textarea data-f="options" rows="8">${esc((sl.options || []).join('\n'))}</textarea>
+          <p class="muted tiny">Phiếu vote gắn theo thứ tự dòng: sửa chữ thì giữ nguyên phiếu; xoá bớt dòng ở cuối thì phiếu của các dòng đó bị bỏ.</p>` : '')
+      + (sl.type === 'speaker' ? `<label>Agenda — dòng bắt đầu bằng # là tên mục, các dòng dưới là ý trong mục</label><textarea data-f="agenda" rows="10">${esc(agendaToText(sl.agenda))}</textarea>` : '')
+      + `<div class="row"><button class="btn small ok" data-a="content-save">💾 Lưu &amp; hiển thị ngay</button><button class="btn small ghost" data-a="content-revert">↺ Về nội dung gốc</button></div>`;
+    ev.innerHTML = `<label>Tên sự kiện</label><input type="text" maxlength="120" data-e="eventTitle" value="${esc(S.eventTitle || '')}">
+      <label>Dòng phụ (đơn vị)</label><input type="text" maxlength="120" data-e="eventSubtitle" value="${esc(S.eventSubtitle || '')}">
+      <div class="row"><button class="btn small ok" data-a="event-save">💾 Lưu</button><button class="btn small ghost" data-a="event-revert">↺ Gốc</button></div>`;
+  }
 
   function renderQa() {
     if (!A) return;

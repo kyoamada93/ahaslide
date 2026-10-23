@@ -55,13 +55,15 @@
     $('#checkedCount').textContent = S.checkedIn;
     $('#qrOverlay').classList.toggle('hidden', !S.bigQr);
     $('#dots').innerHTML = S.slides.map((_, i) => `<span class="${i === S.slideIndex ? 'on' : i < S.slideIndex ? 'done' : ''}"></span>`).join('');
-    if (renderedSlideId !== slide.id) {
-      renderedSlideId = slide.id;
+    // rev changes when the admin edits slide text → rebuild the slide with the new wording.
+    if (renderedSlideId !== slide.id + '|' + S.rev) {
+      renderedSlideId = slide.id + '|' + S.rev;
       const swap = () => {
         stopRace();
         clearTimeout(cloudTimer);
         if (typeof WordCloud === 'function') WordCloud.stop?.();
         document.body.classList.toggle('with-join', !OWN_QR.has(slide.type));
+        document.body.classList.toggle('race-on', slide.type === 'race');
         stage.innerHTML = '';
         const el = document.createElement('section');
         el.className = 'slide ' + slide.type;
@@ -136,7 +138,7 @@
         <div class="qa-grid"><div class="feature glass" id="qaFeature" data-panel></div><div class="list" id="qaList"></div></div>`;
     },
     race(el, sl) {
-      el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>🦆 ${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p></div></div>
+      el.innerHTML = `<div class="race-head"><h1>🦆 ${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p></div>
         <div class="race-stage" data-panel><canvas id="river"></canvas>
           <div class="timer glass hidden" id="raceTimer"></div>
           <div class="board glass hidden" id="raceBoard"></div>

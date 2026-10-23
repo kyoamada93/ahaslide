@@ -284,3 +284,12 @@ body.light .bg-fx { display: block; opacity: .9; }
 .rr-1 .rr-name { font-size: clamp(32px, 5.6vh, 72px); }
 .rr-team { display: block; font-size: clamp(14px, 1.8vh, 22px); font-weight: 600; color: #8a3d6c; margin-top: 2px; }
 .rr-no { font-size: clamp(14px, 1.8vh, 22px); font-weight: 800; color: #8a3d6c; white-space: nowrap; }
+
+/* Race slide: the river gets almost the whole screen. Title sits on one line in the top bar,
+   next to the logo and check-in pill, instead of taking its own rows. */
+body.race-on #stage { inset: 22px 16px 34px; }
+body.race-on .race-head { display: flex; align-items: baseline; gap: 22px; margin: 0 0 14px clamp(440px, 30vw, 600px); min-height: 64px; }
+body.race-on .race-head h1 { font-size: clamp(28px, 2.6vw, 46px); margin: 0; white-space: nowrap; }
+body.race-on .race-head .sub { font-size: clamp(16px, 1.2vw, 22px); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.light .race-stage .lobby { color: #fff; }
+body.light .board .r em { color: #c2006f; font-weight: 900; }

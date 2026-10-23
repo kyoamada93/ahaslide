@@ -59,3 +59,12 @@ body.admin .bg { background: radial-gradient(circle at 80% 10%, #7a0050, transpa
 .google-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .google-btn { background: #fff; color: #1f1f1f; box-shadow: 0 2px 8px rgba(0,0,0,.25); text-decoration: none; }
 .ok-pill { background: rgba(81,207,102,.2); color: #b2f2bb; font-size: 13px; }
+
+/* slide text editor */
+.edit-box { margin-top: 14px; }
+.edit-box summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
+.edit-box label { display: block; font-size: 12px; font-weight: 700; margin: 10px 0 4px; opacity: .8; }
+.edit-box input[type=text], .edit-box textarea { width: 100%; font-size: 14px; padding: 9px 11px; }
+.edit-box textarea { min-height: 90px; font-family: inherit; resize: vertical; }
+.edit-box .row { margin-top: 10px; flex-wrap: wrap; }
+.edit-box .changed { font-size: 11px; color: #ffb3d9; margin-left: 4px; }

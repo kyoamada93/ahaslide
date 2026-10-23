@@ -42,6 +42,8 @@
       <h3 style="margin-top:20px">Logo & background</h3>
       <div class="brand" id="brand"></div>
       <p class="muted tiny">PNG/JPG/WebP/SVG ≤ 12MB. Áp dụng ngay cho mọi màn hình.</p>
+      <h3 style="margin-top:20px">Tên sự kiện</h3>
+      <div class="edit-box event-edit" id="eventEdit"></div>
       <h3 style="margin-top:20px">Nguy hiểm</h3>
       <button class="btn small bad" data-a="reset-all">Reset toàn bộ dữ liệu</button>
     </aside>
@@ -50,6 +52,10 @@
       <div class="row" style="justify-content:space-between"><h3 id="curTitle">—</h3><span class="pill" id="curType"></span></div>
       <div class="preview"><iframe id="preview" title="preview"></iframe></div>
       <div id="controls" class="controls"></div>
+      <details class="edit-box" id="editBox">
+        <summary>✏️ Sửa nội dung slide này</summary>
+        <div id="editForm"></div>
+      </details>
     </section>
 
     <section class="glass box">

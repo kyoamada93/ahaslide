@@ -97,6 +97,60 @@ function persist() {
 
 const currentSlide = () => slides[state.slideIndex];
 const clean = (s, max) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+
+// ---------------------------------------------------------------- slide text edits
+// Admin edits to slide text live in their own file next to state.json, so "Reset toàn bộ dữ liệu"
+// never throws away the wording, and config.json stays the default to revert to.
+const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
+const TEXT_FIELDS = ['kicker', 'title', 'subtitle', 'speaker', 'role', 'topic'];
+const EVENT_FIELDS = ['eventTitle', 'eventSubtitle'];
+const DEFAULTS = JSON.parse(JSON.stringify({ event: Object.fromEntries(EVENT_FIELDS.map((k) => [k, config[k]])), slides: slideById }));
+let content = { event: {}, slides: {}, rev: 0 };
+try {
+  if (fs.existsSync(CONTENT_FILE)) content = Object.assign(content, JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8')));
+} catch (e) {
+  console.error('Could not load slide edits:', e.message);
+}
+
+function applyContent() {
+  for (const k of EVENT_FIELDS) config[k] = content.event[k] ?? DEFAULTS.event[k];
+  for (const s of slides) {
+    const def = DEFAULTS.slides[s.id];
+    const over = content.slides[s.id] || {};
+    for (const k of [...TEXT_FIELDS, 'options', 'agenda']) {
+      const v = k in over ? over[k] : def[k];
+      if (v === undefined) delete s[k];
+      else s[k] = JSON.parse(JSON.stringify(v));
+    }
+  }
+}
+applyContent();
+
+function saveContent() {
+  content.rev = Date.now();
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(CONTENT_FILE + '.tmp', JSON.stringify(content, null, 1));
+  fs.renameSync(CONTENT_FILE + '.tmp', CONTENT_FILE);
+}
+
+// Validates an edit from the admin page; returns the cleaned overrides or an error string.
+function cleanSlideEdit(slide, f = {}) {
+  const out = {};
+  for (const k of TEXT_FIELDS) if (k in f) out[k] = clean(f[k], 300);
+  if ('title' in out && !out.title) return 'Tiêu đề không được để trống';
+  if (slide.type === 'poll' && 'options' in f) {
+    const opts = (Array.isArray(f.options) ? f.options : []).map((o) => clean(o, 300)).filter(Boolean);
+    if (opts.length < 2 || opts.length > 20) return 'Vote cần 2–20 lựa chọn';
+    out.options = opts;
+  }
+  if (slide.type === 'speaker' && 'agenda' in f) {
+    const ag = (Array.isArray(f.agenda) ? f.agenda : []).slice(0, 10)
+      .map((g) => ({ title: clean(g?.title, 120), items: (Array.isArray(g?.items) ? g.items : []).map((x) => clean(x, 300)).filter(Boolean).slice(0, 15) }))
+      .filter((g) => g.title || g.items.length);
+    out.agenda = ag;
+  }
+  return out;
+}
 const normWord = (w) => w.toLocaleLowerCase('vi').normalize('NFC');
 const newId = () => crypto.randomBytes(6).toString('hex');
 
@@ -179,7 +233,7 @@ function approvedQuestions() {
 function audienceState() {
   const slide = currentSlide();
   const view = {
-    eventTitle: config.eventTitle, eventSubtitle: config.eventSubtitle, qaTargets: config.qaTargets,
+    eventTitle: config.eventTitle, eventSubtitle: config.eventSubtitle, qaTargets: config.qaTargets, rev: content.rev,
     slideIndex: state.slideIndex, slideCount: slides.length, slide,
   };
   if (slide.type === 'poll') view.poll = pollResults(slide.id);
@@ -194,6 +248,7 @@ function publicState() {
     eventTitle: config.eventTitle,
     eventSubtitle: config.eventSubtitle,
     qaTargets: config.qaTargets,
+    rev: content.rev,
     slideIndex: state.slideIndex,
     slideCount: slides.length,
     slides: slides.map((s) => ({ id: s.id, type: s.type, title: s.title, speaker: s.speaker })),
@@ -827,6 +882,31 @@ io.on('connection', (socket) => {
         emitRaceFrame();
         break;
       }
+      case 'content:save': {
+        if (a.event) {
+          for (const k of EVENT_FIELDS) if (k in a.event) content.event[k] = clean(a.event[k], 120);
+          if (!content.event.eventTitle) return ack(cb, { ok: false, error: 'Tên sự kiện không được để trống' });
+        }
+        if (a.slideId) {
+          const slide = slideById[a.slideId];
+          if (!slide) return ack(cb, { ok: false, error: 'unknown slide' });
+          const edit = cleanSlideEdit(slide, a.fields);
+          if (typeof edit === 'string') return ack(cb, { ok: false, error: edit });
+          content.slides[slide.id] = Object.assign(content.slides[slide.id] || {}, edit);
+          // Fewer poll options: votes for options that no longer exist are dropped.
+          if (edit.options) for (const [u, i] of Object.entries(state.votes[slide.id] || {})) if (i >= edit.options.length) delete state.votes[slide.id][u];
+        }
+        applyContent();
+        saveContent();
+        break;
+      }
+      case 'content:revert': {
+        if (a.slideId) delete content.slides[a.slideId];
+        if (a.event) content.event = {};
+        applyContent();
+        saveContent();
+        break;
+      }
       case 'reset:all':
         if (a.confirm !== 'RESET') return ack(cb, { ok: false, error: 'confirm required' });
         clearInterval(raceTick);
@@ -838,7 +918,7 @@ io.on('connection', (socket) => {
         return ack(cb, { ok: false, error: 'unknown action' });
     }
     ack(cb, { ok: true });
-    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle', 'poll:view'].includes(a.type));
+    broadcast(['content:save', 'content:revert', 'goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle', 'poll:view'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));
