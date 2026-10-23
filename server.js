@@ -238,11 +238,22 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: false }, pingInterval: 10000, pingTimeout: 20000 });
 
 const pub = path.join(__dirname, 'public');
-app.get('/', (_req, res) => res.sendFile(path.join(pub, 'audience.html')));
-app.get('/screen', (_req, res) => res.sendFile(path.join(pub, 'screen.html')));
-app.get('/admin', (_req, res) => res.sendFile(path.join(pub, 'admin.html')));
-app.get('/moderator', (_req, res) => res.sendFile(path.join(pub, 'moderator.html')));
-app.get('/mc', (_req, res) => res.sendFile(path.join(pub, 'mc.html')));
+// Pages link their CSS/JS with ?v=<build>, so every deploy forces browsers to fetch fresh files
+// (a cached old stylesheet with new HTML is what broke the screen/admin layout after a redeploy).
+const BUILD = (process.env.RAILWAY_GIT_COMMIT_SHA || String(Date.now())).slice(0, 12);
+const pages = {};
+function page(name) {
+  if (!pages[name]) {
+    pages[name] = fs.readFileSync(path.join(pub, name), 'utf8')
+      .replace(/(href|src)="(\/(?:css|js)\/[^"?]+)"/g, `$1="$2?v=${BUILD}"`);
+  }
+  return (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(pages[name]); };
+}
+app.get('/', page('audience.html'));
+app.get('/screen', page('screen.html'));
+app.get('/admin', page('admin.html'));
+app.get('/moderator', page('moderator.html'));
+app.get('/mc', page('mc.html'));
 // Branding slots: an admin upload in DATA_DIR/brand overrides the bundled default asset.
 const BRAND = {
   'ai-data-logo': 'assets/ai-data-logo.png',

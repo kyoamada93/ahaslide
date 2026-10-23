@@ -7,7 +7,8 @@
   let renderedSlideId = null;
   let join = { url: '', svg: '' };
 
-  // The branded background image carries the visual; no particle layer on the projector.
+  // Soft floating sparkles over the branded background.
+  particles($('#fx'), 36, { dot: 'rgba(255,255,255,.85)', line: '255,255,255', lineAlpha: 0.18 });
 
   // Keep the projector laptop from dimming or sleeping mid-event (needs https or localhost).
   let wakeLock = null;
@@ -48,8 +49,6 @@
 
   // Slides with their own big QR (or a race in progress) hide the side QR.
   const OWN_QR = new Set(['checkin', 'feedback', 'race']);
-  const canMorph = typeof document.startViewTransition === 'function';
-  document.documentElement.classList.toggle('no-vt', !canMorph);
 
   function update() {
     const slide = S.slide;
@@ -57,7 +56,6 @@
     $('#qrOverlay').classList.toggle('hidden', !S.bigQr);
     $('#dots').innerHTML = S.slides.map((_, i) => `<span class="${i === S.slideIndex ? 'on' : i < S.slideIndex ? 'done' : ''}"></span>`).join('');
     if (renderedSlideId !== slide.id) {
-      const first = renderedSlideId === null;
       renderedSlideId = slide.id;
       const swap = () => {
         stopRace();
@@ -69,26 +67,14 @@
         el.className = 'slide ' + slide.type;
         stage.appendChild(el);
         (builders[slide.type] || builders.unknown)(el, slide);
-        nameMorphTargets(el);
         (updaters[slide.type] || (() => {}))(el, slide);
       };
-      // PowerPoint-Morph style: elements sharing a view-transition-name glide between slides.
-      if (canMorph && !first && !document.hidden) document.startViewTransition(swap);
-      else swap();
+      swap();
       return;
     }
     (updaters[slide.type] || (() => {}))(stage.firstChild, slide);
   }
 
-  // Shared names = the "same shape" across slides (title, kicker, main panel, QR).
-  function nameMorphTargets(el) {
-    const tag = (node, name) => { if (node) node.style.viewTransitionName = name; };
-    tag(el.querySelector('h1'), 'm-title');
-    tag(el.querySelector('.kicker'), 'm-kicker');
-    tag(el.querySelector('.sub'), 'm-sub');
-    tag(el.querySelector('[data-panel]'), 'm-panel');
-    tag(el.querySelector('.qr-box'), 'm-qr');
-  }
 
   const builders = {
     checkin(el, sl) {

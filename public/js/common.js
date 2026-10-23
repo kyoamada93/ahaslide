@@ -43,7 +43,8 @@ window.TH = (() => {
   });
 
   // Floating particles over the AI background.
-  function particles(canvas, count = 60) {
+  function particles(canvas, count = 60, look = {}) {
+    const dotColor = look.dot || 'rgba(255,210,235,.8)', lineRgb = look.line || '255,170,215', lineA = look.lineAlpha ?? 0.25;
     const ctx = canvas.getContext('2d');
     let w, h, dpr;
     const ps = [];
@@ -62,9 +63,9 @@ window.TH = (() => {
       ctx.lineWidth = dpr * .6;
       for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
         const dx = (ps[i].x - ps[j].x) * w, dy = (ps[i].y - ps[j].y) * h, d = Math.hypot(dx, dy), m = 150 * dpr;
-        if (d < m) { ctx.strokeStyle = `rgba(255,170,215,${(1 - d / m) * .25})`; ctx.beginPath(); ctx.moveTo(ps[i].x * w, ps[i].y * h); ctx.lineTo(ps[j].x * w, ps[j].y * h); ctx.stroke(); }
+        if (d < m) { ctx.strokeStyle = `rgba(${lineRgb},${(1 - d / m) * lineA})`; ctx.beginPath(); ctx.moveTo(ps[i].x * w, ps[i].y * h); ctx.lineTo(ps[j].x * w, ps[j].y * h); ctx.stroke(); }
       }
-      for (const p of ps) { ctx.fillStyle = 'rgba(255,210,235,.8)'; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, p.r * dpr, 0, 7); ctx.fill(); }
+      for (const p of ps) { ctx.fillStyle = dotColor; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, p.r * dpr, 0, 7); ctx.fill(); }
       requestAnimationFrame(frame);
     })();
   }

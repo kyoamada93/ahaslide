@@ -222,7 +222,6 @@ body.light .side-lbl { color: #8a0052; }
 body.light .side-url { color: #6b0a47; }
 body:not(.with-join) #sideJoin { display: none; }
 body.with-join #stage { right: 430px; }
-body.with-join #miniQr { view-transition-name: m-qr; }
 .top { justify-content: flex-start; }
 .qr-overlay { position: fixed; inset: 0; z-index: 40; background: rgba(255, 236, 246, .94); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
 .qr-overlay-box { background: #fff; border-radius: 28px; padding: 22px; box-shadow: 0 20px 80px rgba(165,0,100,.25); }
@@ -230,15 +229,16 @@ body.with-join #miniQr { view-transition-name: m-qr; }
 .qr-overlay-code svg { width: 100%; height: 100%; display: block; }
 .qr-overlay-txt { font-size: 30px; color: #6b0a47; font-weight: 700; }
 
-/* ===================================================================== morph transitions */
-html:not(.no-vt) .slide { animation: none; }
-::view-transition-group(*) { animation-duration: .8s; animation-timing-function: cubic-bezier(.22,.9,.24,1); }
-::view-transition-old(root) { animation: vt-out .45s ease both; }
-::view-transition-new(root) { animation: vt-in .6s cubic-bezier(.22,.9,.24,1) both; }
-::view-transition-old(m-panel), ::view-transition-new(m-panel) { height: 100%; object-fit: cover; }
-@keyframes vt-out { to { opacity: 0; transform: scale(.985); } }
-@keyframes vt-in { from { opacity: 0; transform: scale(1.015); } }
-@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: .01s !important; } }
+/* ===================================================================== background motion */
+/* Slow drift of the image + a soft light sweep; both are transform-only so the GPU composites them. */
+body.light .bg { inset: -3%; animation: bg-drift 36s ease-in-out infinite alternate; will-change: transform; }
+@keyframes bg-drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.06) translate(-1.2%, -1%); } }
+body.light::before { content: ''; position: fixed; top: -20%; bottom: -20%; left: 0; width: 40%; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255,255,255,.28) 45%, rgba(255,255,255,.4) 50%, rgba(255,255,255,.28) 55%, transparent 100%);
+  transform: translateX(-120%) skewX(-12deg); animation: bg-sweep 14s ease-in-out infinite; will-change: transform; }
+@keyframes bg-sweep { 0%, 15% { transform: translateX(-120%) skewX(-12deg); } 60%, 100% { transform: translateX(320%) skewX(-12deg); } }
+body.light .bg-fx { display: block; opacity: .9; }
+@media (prefers-reduced-motion: reduce) { body.light .bg, body.light::before { animation: none; } }
 
 /* 3D AI&Data logo, top-left like the design mockup */
 .top { gap: 18px; align-items: center; }
