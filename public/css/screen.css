@@ -210,7 +210,9 @@ body { overflow: hidden; }
 .townhall-screen .speaker.with-agenda { gap: 3vw; padding-right: 6vw; }
 .townhall-screen .agenda ul { color: var(--muted); }
 .townhall-screen .agenda .ag-n { color: #fff; }
-.townhall-screen .opt .num { color: #a50064; background: #f9e0ef; }
+.townhall-screen .opt .num { color: #a50064; background: #f9e0ef; height: min(40px, 3.8vh); font-size: clamp(16px, 1.5vw, 22px); }
+.townhall-screen .opt .val { font-size: clamp(16px, 1.3vw, 25px); line-height: 1.05; }
+.townhall-screen .opt .val small { font-size: 12px; line-height: 1.1; }
 .townhall-screen .opt .bar-wrap { background: #f9edf4; }
 .townhall-screen .opt .bar { background: linear-gradient(90deg, #ffc8e3, #ef96c4); }
 .townhall-screen .opt.lead .bar { background: linear-gradient(90deg, #b8d8ff, #74b5ff); }
