@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Townhall — Moderator Q&A</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin moderator">
+<div class="bg"></div>
+<div id="login" class="login glass hidden">
+  <h2>Moderator Q&A</h2>
+  <input type="text" id="keyInput" placeholder="Admin key">
+  <button class="btn" id="loginBtn" style="margin-top:12px;width:100%">Vào</button>
+</div>
+<div id="panel" class="hidden">
+  <header class="ad-top">
+    <div class="logos"><img class="aidata" src="/brand/ai-data-logo" alt=""></div>
+    <div class="row stats-row"><span class="pill">Slide hiện tại: <b id="curTitle">—</b></span><span class="pill">👥 <b id="stUsers">0</b></span></div>
+  </header>
+  <section class="glass box mod-box">
+    <h3>Duyệt câu hỏi — chỉ câu hỏi được Approve mới hiện lên màn hình</h3>
+    <div class="qa-add">
+      <textarea id="qaNew" maxlength="1000" placeholder="➕ Thêm câu hỏi (ban tổ chức / câu hỏi gom từ kênh khác)…"></textarea>
+      <div class="row"><button class="btn small ok" data-a="qa-add">➕ Thêm &amp; hiển thị ngay</button><button class="btn small ghost" data-a="qa-add" data-pending="1">Thêm vào chờ duyệt</button></div>
+    </div>
+    <div class="tabs" id="qaTabs"></div>
+    <div id="qaList" class="qa-list"></div>
+  </section>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

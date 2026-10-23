@@ -1,0 +1,108 @@
+{
+  "eventTitle": "Townhall AI & Data",
+  "eventSubtitle": "MoMo · AI & Data Division",
+  "profanityFilter": true,
+  "slides": [
+    {
+      "id": "checkin",
+      "type": "checkin",
+      "title": "Chào mừng đến Townhall AI & Data",
+      "subtitle": "Quét mã QR để check-in tham gia chương trình"
+    },
+    {
+      "id": "wish",
+      "type": "wordcloud",
+      "title": "Bạn mong muốn gì ở Townhall hôm nay?",
+      "subtitle": "Nhập 1–3 từ khoá",
+      "maxPerUser": 3
+    },
+    {
+      "id": "topic-vote",
+      "type": "poll",
+      "title": "Vote chủ đề sharing bạn yêu thích nhất",
+      "subtitle": "Mỗi người 1 phiếu — có thể đổi lựa chọn đến khi đóng vote",
+      "options": [
+        "A novel multimodal feature fusion method for Vietnamese text comprehension in images",
+        "Unified Foundation Model: Context-Aware Next Event Prediction",
+        "DIY: coding-agent v2",
+        "Flow Matching Rules Them All: TTS case study",
+        "Understand Your Business, Frame & Solve the Right Data Problem, Tell the Story — So Decisions Get Made",
+        "Foundation Model: Zero Shot Tabular Data Inference",
+        "Fraud User Journey Model",
+        "Agentic tips & tricks: setup workflow with multi agent models",
+        "The story of one of the most turbulent eras of Vietnam history: Le - Trinh - Nguyen",
+        "JEV và ứng dụng trong các hệ thống Agentic AI",
+        "Where to store an encryption key"
+      ],
+      "speakers": [
+        "dan.tran2",
+        "y.hoang",
+        "son.pham9",
+        "nghia.huynh",
+        "hau.le2, dung.luong1",
+        "the.le",
+        "nguyen.dang2",
+        "thach.le1",
+        "cuong.nguyen18",
+        "nam.ha",
+        "chien.ngo2"
+      ],
+      "hideResults": false
+    },
+    {
+      "id": "food-of-thought",
+      "type": "speaker",
+      "kicker": "Mục",
+      "title": "Food of Thought",
+      "topic": "",
+      "agenda": [
+        {
+          "title": "Insight",
+          "items": [
+            "Macro + Company",
+            "External: APAC → MoMo; đối thủ bên ngoài",
+            "Internal: các thay đổi trong công ty"
+          ]
+        },
+        {
+          "title": "Highlight",
+          "items": [
+            "Những thay đổi mới (new changes)",
+            "Những điểm cần củng cố (reinforce)"
+          ]
+        },
+        {
+          "title": "People",
+          "items": [
+            "MoMo Talent 2026",
+            "Culture: Teamwork, v.v."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qa",
+      "type": "qa",
+      "title": "Q&A trực tiếp",
+      "subtitle": "Gửi câu hỏi & upvote câu hỏi bạn quan tâm"
+    },
+    {
+      "id": "race",
+      "type": "race",
+      "title": "Đua vịt MoMo",
+      "subtitle": "Tap thật nhanh vào màn hình để vịt của bạn tăng tốc!",
+      "finishTaps": 160,
+      "maxTapsPerSecond": 14,
+      "maxDurationSec": 60,
+      "podium": 3
+    },
+    {
+      "id": "feedback",
+      "type": "feedback",
+      "title": "Cảm ơn bạn đã tham gia!",
+      "subtitle": "Dành 1 phút đánh giá & góp ý cho Townhall kỳ sau nhé"
+    }
+  ],
+  "qaTargets": [],
+  "qaSheetUrl": "https://docs.google.com/spreadsheets/d/1DQA4B9BqNIV8fRwVQvXnB-8Z7mvNCTZSt6YmjCdb_W8/edit?resourcekey=&gid=2088885041#gid=2088885041"
+}

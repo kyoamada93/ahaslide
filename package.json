@@ -1,0 +1,27 @@
+{
+  "name": "ahaslide-townhall",
+  "version": "1.0.0",
+  "description": "AhaSlides-style interactive program for MoMo AI&Data Townhall",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "simulate": "node scripts/simulate.js",
+    "test": "node scripts/smoke-test.js && node scripts/composio-test.js && node scripts/categorize-test.js",
+    "load-test": "node scripts/load-test.js 300"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "express": "^5.3.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4",
+    "wordcloud": "^1.2.3"
+  },
+  "devDependencies": {
+    "https-proxy-agent": "^7.0.6",
+    "socket.io-client": "^4.8.4"
+  }
+}

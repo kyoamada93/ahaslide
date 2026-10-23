@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#a50064">
+<title>Townhall — MC</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="/css/mc.css">
+</head>
+<body class="admin mc">
+<div class="bg"></div>
+<div id="login" class="login glass hidden">
+  <h2>🎤 Trang MC</h2>
+  <input type="text" id="keyInput" placeholder="Mã MC / admin key">
+  <button class="btn" id="loginBtn" style="margin-top:12px;width:100%">Vào</button>
+</div>
+
+<div id="panel" class="hidden">
+  <header class="ad-top">
+    <h2 class="mc-title">🎤 MC · Chọn câu hỏi</h2>
+    <div class="row stats-row">
+      <span class="pill">Màn hình: <b id="curTitle">—</b></span>
+      <button class="btn small" id="toQa">📺 Chuyển màn hình sang Q&A</button>
+    </div>
+  </header>
+
+  <section class="glass box mc-timers" id="timers">
+    <div class="tm"><span>🕐 Bây giờ</span><b id="tmClock">--:--</b></div>
+    <div class="tm"><span>⏱ Chương trình</span><b id="tmProgram">—</b><button class="btn small ghost" id="tmProgramBtn">▶ Bắt đầu</button></div>
+    <div class="tm"><span>📺 Slide này</span><b id="tmSlide">—</b></div>
+    <div class="tm tm-q" id="tmQBox"><span>🎤 Câu đang trả lời</span><b id="tmQ">—</b></div>
+  </section>
+
+
+  <section class="glass box mc-now">
+    <div class="mc-label">ĐANG HIỂN THỊ TRÊN MÀN HÌNH <span id="nowCat"></span></div>
+    <div id="nowLead" class="mc-lead hidden"></div>
+    <div id="nowText" class="mc-now-text">—</div>
+    <div id="nowNote" class="mc-note hidden"></div>
+    <div class="row mc-actions">
+      <button class="btn ok" data-a="answered" id="btnAnswered">✅ Đã trả lời</button>
+      <button class="btn warn" data-a="next">⏭ Câu tiếp theo (top vote)</button>
+      <button class="btn ghost" data-a="clear" id="btnClear">✖ Bỏ chọn</button>
+    </div>
+  </section>
+
+  <details class="glass box mc-script" id="scriptBox" open>
+    <summary>📜 Kịch bản MC · <span id="scriptFor">—</span></summary>
+    <div id="scriptBody"></div>
+    <div class="script-tabs" id="scriptTabs"></div>
+  </details>
+
+  <section class="glass box">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+      <h3 id="listTitle">Câu hỏi đã duyệt</h3>
+      <div class="tabs cats" id="cats"></div>
+      <div class="tabs" id="tabs">
+        <button data-tab="top" class="on">🔥 Top vote</button>
+        <button data-tab="new">🕒 Mới nhất</button>
+        <button data-tab="answered">💬 Đã trả lời</button>
+      </div>
+    </div>
+    <div id="list" class="mc-list"></div>
+  </section>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/mc-script.js"></script>
+<script src="/js/mc.js"></script>
+</body>
+</html>

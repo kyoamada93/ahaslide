@@ -1,0 +1,77 @@
+body.admin { overflow: auto; }
+.tiny { font-size: 12px; }
+.login { max-width: 360px; margin: 18vh auto; padding: 28px; }
+.ad-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; gap: 12px; flex-wrap: wrap; }
+.stats-row { flex-wrap: wrap; }
+.stats-row .pill { font-size: 14px; padding: 6px 12px; }
+.stats-row a { text-decoration: none; }
+.grid { display: grid; grid-template-columns: 280px minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; padding: 0 20px 20px; align-items: start; }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+.box { padding: 16px; background: rgba(26, 0, 16, .55); }
+.box h3 { margin: 0 0 10px; font-size: 16px; }
+.slide-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.slide-list li { padding: 10px 12px; border-radius: 12px; cursor: pointer; background: rgba(255,255,255,.06); border: 1px solid transparent; display: flex; gap: 10px; align-items: center; }
+.slide-list li:hover { background: rgba(255,255,255,.12); }
+.slide-list li.on { background: linear-gradient(135deg, rgba(216,45,139,.8), rgba(165,0,100,.8)); border-color: #fff; }
+.slide-list li .i { width: 24px; height: 24px; border-radius: 7px; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex: none; }
+.slide-list li small { display: block; color: var(--muted); font-size: 11px; }
+.preview { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+.preview iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.controls { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.controls .row { flex-wrap: wrap; }
+.exports { display: flex; flex-wrap: wrap; gap: 6px; }
+.exports a { text-decoration: none; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.tabs button { border: 1px solid var(--line); background: rgba(255,255,255,.08); color: #fff; border-radius: 999px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.tabs button.on { background: #fff; color: var(--momo); }
+.qa-list { display: flex; flex-direction: column; gap: 8px; max-height: 72vh; overflow: auto; }
+.qa-item { padding: 12px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid var(--line); }
+.qa-item.hl { border-color: #ffd43b; box-shadow: 0 0 0 2px rgba(255,212,59,.4); }
+.qa-item .t { font-weight: 600; line-height: 1.35; margin-bottom: 6px; }
+.qa-item .by { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.qa-item .row { flex-wrap: wrap; gap: 6px; }
+.words { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow: auto; }
+.words button { border: 1px solid var(--line); background: rgba(255,255,255,.1); color: #fff; border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+.words button.hid { text-decoration: line-through; opacity: .5; }
+.fb-list { max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.fb-list div { background: rgba(255,255,255,.07); padding: 8px 10px; border-radius: 10px; }
+.mod-box { margin: 0 20px 20px; }
+.moderator .qa-list { max-height: none; }
+.moderator .qa-item .t { font-size: 18px; }
+.moderator .qa-item .btn.small { padding: 10px 16px; font-size: 15px; }
+.brand { display: flex; flex-direction: column; gap: 8px; }
+.brand .slot { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; background: rgba(255,255,255,.06); border-radius: 12px; padding: 8px; }
+.brand .slot img { width: 64px; height: 40px; object-fit: contain; background: rgba(0,0,0,.3); border-radius: 8px; }
+.brand .slot b { font-size: 13px; display: block; margin-bottom: 4px; }
+.brand .slot label { display: inline-block; margin: 0; cursor: pointer; }
+.brand .slot input[type=file] { display: none; }
+.qa-item.flag { border-color: #ff6b6b; }
+.flag-note { font-size: 12px; font-weight: 700; color: #ffa8a8; margin-bottom: 6px; }
+.qa-add { margin-bottom: 12px; }
+.qa-add textarea { min-height: 64px; margin-bottom: 8px; }
+/* Control pages keep a dark backdrop; the pink branded image is for the projector. */
+body.admin .bg { background: radial-gradient(circle at 80% 10%, #7a0050, transparent 55%), linear-gradient(135deg, #1f0013, #4a0030); }
+.sheet-box { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+.sheet-box summary { cursor: pointer; font-weight: 700; }
+.sheet-box input[type=text] { margin: 10px 0 4px; font-size: 13px; padding: 10px 12px; }
+.sheet-box .row { margin: 8px 0 6px; }
+.sheet-box .check { display: flex; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; font-weight: 500; }
+.google-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.google-btn { background: #fff; color: #1f1f1f; box-shadow: 0 2px 8px rgba(0,0,0,.25); text-decoration: none; }
+.ok-pill { background: rgba(81,207,102,.2); color: #b2f2bb; font-size: 13px; }
+
+/* slide text editor */
+.edit-box { margin-top: 14px; }
+.edit-box summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
+.edit-box label { display: block; font-size: 12px; font-weight: 700; margin: 10px 0 4px; opacity: .8; }
+.edit-box input[type=text], .edit-box textarea { width: 100%; font-size: 14px; padding: 9px 11px; }
+.edit-box textarea { min-height: 90px; font-family: inherit; resize: vertical; }
+.edit-box .row { margin-top: 10px; flex-wrap: wrap; }
+.edit-box .changed { font-size: 11px; color: #ffb3d9; margin-left: 4px; }
+
+/* Q&A topic group */
+.cat-sel { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 999px; border: 0; color: #fff; margin-left: 6px; cursor: pointer; }
+.cat-sel option { color: #000; background: #fff; }
+.cat-sel.cat-fun { background: #2b8a3e; }
+.cat-sel.cat-okr { background: #1971c2; }
+.cat-sel.cat-hard { background: #e8590c; }

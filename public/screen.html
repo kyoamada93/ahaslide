@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Townhall AI & Data — Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/screen.css">
+</head>
+<body class="light">
+<div class="bg"></div>
+<canvas class="bg-fx" id="fx"></canvas>
+
+<header class="top">
+  <img class="brand-logo" src="/brand/ai-data-logo" alt="AI & Data">
+  <div class="count-chip glass"><span class="dot"></span><b id="checkedCount">0</b>&nbsp;đã check-in</div>
+</header>
+<!-- Join QR kept large so it scans from the back of the room. -->
+<aside class="side-join glass" id="sideJoin">
+  <div class="side-qr qr-morph" id="miniQr"></div>
+  <div class="side-lbl">📱 Quét để tham gia</div>
+  <b class="side-url" id="miniUrl"></b>
+</aside>
+<div class="qr-overlay hidden" id="qrOverlay">
+  <div class="qr-overlay-box"><div class="qr-overlay-code" id="qrOverlayCode"></div></div>
+  <div class="qr-overlay-txt">📱 Quét mã để tham gia · <b id="qrOverlayUrl"></b></div>
+</div>
+
+<main id="stage"></main>
+
+<footer class="bottom">
+  <div id="dots" class="dots"></div>
+  <div class="muted small" id="hint">F: toàn màn hình</div>
+</footer>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/vendor/wordcloud2.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/race-scene.js"></script>
+<script src="/js/screen.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Townhall — Điều khiển</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin">
+<div class="bg"></div>
+<div id="login" class="login glass hidden">
+  <h2>Đăng nhập điều khiển</h2>
+  <input type="text" id="keyInput" placeholder="Admin key">
+  <button class="btn" id="loginBtn" style="margin-top:12px;width:100%">Vào</button>
+</div>
+
+<div id="panel" class="hidden">
+  <header class="ad-top">
+    <div class="logos"><img class="aidata" src="/brand/ai-data-logo" alt=""></div>
+    <div class="row stats-row">
+      <span class="pill">👥 <b id="stUsers">0</b> check-in</span>
+      <span class="pill">🟢 <b id="stOnline">0</b> online</span>
+      <button class="btn small ghost" data-a="qr-toggle" id="qrBtn">📱 QR toàn màn hình</button>
+      <a class="btn small" id="openScreen" target="_blank">📺 Màn hình chiếu (Screen) ↗</a>
+      <a class="btn small ghost" id="openMod" target="_blank">Moderator ↗</a>
+      <a class="btn small ghost" id="openMc" target="_blank">🎤 MC ↗</a>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="glass box">
+      <h3>Slides</h3>
+      <ol id="slideList" class="slide-list"></ol>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" data-a="prev" style="flex:1">◀ Trước</button>
+        <button class="btn" data-a="next" style="flex:1">Tiếp ▶</button>
+      </div>
+      <p class="muted tiny">Phím tắt: ← → (hoặc clicker)</p>
+      <h3 style="margin-top:20px">Xuất dữ liệu (CSV)</h3>
+      <div class="exports" id="exports"></div>
+      <h3 style="margin-top:20px">Logo & background</h3>
+      <div class="brand" id="brand"></div>
+      <p class="muted tiny">PNG/JPG/WebP/SVG ≤ 12MB. Áp dụng ngay cho mọi màn hình.</p>
+      <h3 style="margin-top:20px">Tên sự kiện</h3>
+      <div class="edit-box event-edit" id="eventEdit"></div>
+      <h3 style="margin-top:20px">Nguy hiểm</h3>
+      <button class="btn small bad" data-a="reset-all">Reset toàn bộ dữ liệu</button>
+    </aside>
+
+    <section class="glass box">
+      <div class="row" style="justify-content:space-between"><h3 id="curTitle">—</h3><span class="pill" id="curType"></span></div>
+      <div class="preview"><iframe id="preview" title="preview"></iframe></div>
+      <div id="controls" class="controls"></div>
+      <details class="edit-box" id="editBox">
+        <summary>✏️ Sửa nội dung slide này</summary>
+        <div id="editForm"></div>
+      </details>
+    </section>
+
+    <section class="glass box">
+      <h3>Q&A — duyệt câu hỏi</h3>
+      <details class="sheet-box" id="sheetBox" open>
+        <summary>📄 Lấy câu hỏi từ Google Sheet (Google Form)</summary>
+        <div class="google-row" id="googleRow"></div>
+        <input type="text" id="sheetUrl" placeholder="Dán link Google Sheet (tab Form_Responses)…">
+        <label class="check"><input type="checkbox" id="sheetApprove"> Duyệt luôn (hiện lên ngay, không qua chờ duyệt)</label>
+        <label class="check"><input type="checkbox" id="sheetAuto"> Tự động đồng bộ mỗi 1 phút</label>
+        <div class="row"><button class="btn small ok" data-a="sheet-sync">🔄 Đồng bộ ngay</button><button class="btn small ghost" data-a="sheet-save">Lưu cài đặt</button></div>
+        <div class="muted tiny" id="sheetStatus"></div>
+        <div class="muted tiny">Đăng nhập Google bằng tài khoản xem được sheet (sheet riêng tư vẫn đọc được). Chưa đăng nhập thì sheet phải chia sẻ <b>"Bất kỳ ai có đường liên kết → Người xem"</b>. Câu đã lấy không bị lấy trùng; chỉ lấy câu chọn "Cả hai" hoặc "Trả lời trực tiếp trong buổi Town Hall".</div>
+      </details>
+      <div class="qa-add">
+      <textarea id="qaNew" maxlength="1000" placeholder="➕ Thêm câu hỏi (ban tổ chức / câu hỏi gom từ kênh khác)…"></textarea>
+      <div class="row"><button class="btn small ok" data-a="qa-add">➕ Thêm &amp; hiển thị ngay</button><button class="btn small ghost" data-a="qa-add" data-pending="1">Thêm vào chờ duyệt</button></div>
+    </div>
+    <div class="tabs" id="qaTabs"></div>
+      <div id="qaList" class="qa-list"></div>
+    </section>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

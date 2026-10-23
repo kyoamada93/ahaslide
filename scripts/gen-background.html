@@ -1,0 +1,90 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#12000c}canvas{display:block}</style></head>
+<body><canvas id="c"></canvas>
+<script>
+// Generative "AI neural network" artwork in MoMo palette. Rendered by scripts/gen-background.js.
+const params = new URLSearchParams(location.search);
+const W = +params.get('w') || 1920, H = +params.get('h') || 1080, seed0 = +params.get('seed') || 7;
+const c = document.getElementById('c'); c.width = W; c.height = H;
+const x = c.getContext('2d');
+let s = seed0; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+
+// Base gradient: deep plum -> MoMo magenta.
+let g = x.createLinearGradient(0, 0, W, H);
+g.addColorStop(0, '#16000f'); g.addColorStop(0.45, '#3d0029'); g.addColorStop(0.8, '#7a0050'); g.addColorStop(1, '#a50064');
+x.fillStyle = g; x.fillRect(0, 0, W, H);
+
+// Nebula glows.
+x.globalCompositeOperation = 'lighter';
+const glows = [[0.82, 0.2, 0.55, '#d82d8b', 0.55], [0.15, 0.85, 0.5, '#a50064', 0.5], [0.55, 0.55, 0.35, '#ff6fb5', 0.18], [0.95, 0.9, 0.4, '#ff3d9a', 0.3], [0.05, 0.1, 0.35, '#6b2c91', 0.35]];
+for (const [gx, gy, gr, col, a] of glows) {
+  const r = gr * Math.max(W, H);
+  const rg = x.createRadialGradient(gx * W, gy * H, 0, gx * W, gy * H, r);
+  rg.addColorStop(0, col); rg.addColorStop(1, 'transparent');
+  x.globalAlpha = a; x.fillStyle = rg; x.fillRect(0, 0, W, H);
+}
+x.globalAlpha = 1;
+
+// Flowing light ribbons (sine waves).
+for (let k = 0; k < 26; k++) {
+  x.beginPath();
+  const amp = 40 + rnd() * 120, f = 0.0015 + rnd() * 0.002, ph = rnd() * 6, yb = H * (0.45 + rnd() * 0.45);
+  for (let px = -20; px <= W + 20; px += 8) {
+    const py = yb + Math.sin(px * f + ph) * amp + Math.sin(px * f * 2.7 + ph * 2) * amp * 0.25 - px * 0.18 * (H / W);
+    px < 0 ? x.moveTo(px, py) : x.lineTo(px, py);
+  }
+  x.strokeStyle = `rgba(255,${120 + (rnd() * 80) | 0},${190 + (rnd() * 60) | 0},${0.05 + rnd() * 0.12})`;
+  x.lineWidth = 1 + rnd() * 2.5; x.stroke();
+}
+
+// Neural network: nodes + connections, denser on the right.
+const nodes = [];
+const N = Math.round((W * H) / 14000);
+for (let i = 0; i < N; i++) {
+  const bias = Math.pow(rnd(), 0.6);
+  nodes.push({ x: (W >= H ? bias : rnd()) * W, y: rnd() * H, r: 0.8 + rnd() * 2.6 });
+}
+const maxD = Math.min(W, H) * 0.12;
+for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+  const a = nodes[i], b = nodes[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+  if (d < maxD) {
+    x.strokeStyle = `rgba(255,170,215,${(1 - d / maxD) * 0.22})`; x.lineWidth = 0.8;
+    x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke();
+  }
+}
+for (const n of nodes) {
+  const rg = x.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 6);
+  rg.addColorStop(0, 'rgba(255,220,240,0.9)'); rg.addColorStop(0.3, 'rgba(255,111,181,0.35)'); rg.addColorStop(1, 'transparent');
+  x.fillStyle = rg; x.beginPath(); x.arc(n.x, n.y, n.r * 6, 0, Math.PI * 2); x.fill();
+}
+
+// Data grid floor in perspective at the bottom.
+x.globalCompositeOperation = 'source-over';
+const horizon = H * 0.72;
+x.strokeStyle = 'rgba(255,111,181,0.10)'; x.lineWidth = 1;
+for (let i = 0; i < 18; i++) { const t = i / 18, y = horizon + (H - horizon) * t * t; x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); }
+for (let i = -20; i <= 20; i++) { x.beginPath(); x.moveTo(W / 2 + i * 30, horizon); x.lineTo(W / 2 + i * 260, H); x.stroke(); }
+
+// Binary/data glyph rain, faint.
+x.font = `${Math.round(H / 70)}px monospace`;
+for (let i = 0; i < 160; i++) {
+  x.fillStyle = `rgba(255,190,225,${0.04 + rnd() * 0.1})`;
+  x.fillText(rnd() > 0.5 ? '1' : '0', rnd() * W, rnd() * H);
+}
+
+// Bokeh.
+x.globalCompositeOperation = 'lighter';
+for (let i = 0; i < 40; i++) {
+  const bx = rnd() * W, by = rnd() * H, br = 10 + rnd() * 60;
+  const rg = x.createRadialGradient(bx, by, 0, bx, by, br);
+  rg.addColorStop(0, `rgba(255,140,200,${0.05 + rnd() * 0.12})`); rg.addColorStop(1, 'transparent');
+  x.fillStyle = rg; x.beginPath(); x.arc(bx, by, br, 0, Math.PI * 2); x.fill();
+}
+
+// Vignette so foreground content stays readable.
+x.globalCompositeOperation = 'source-over';
+const vg = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+vg.addColorStop(0, 'rgba(10,0,6,0)'); vg.addColorStop(1, 'rgba(10,0,6,0.6)');
+x.fillStyle = vg; x.fillRect(0, 0, W, H);
+document.title = 'done';
+</script></body></html>
