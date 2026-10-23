@@ -20,6 +20,7 @@ const QRCode = require('qrcode');
 const { hasProfanity } = require('./profanity');
 const sheetSync = require('./sheet-sync');
 const googleAuth = require('./google-auth');
+const composio = require('./composio');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
@@ -219,7 +220,7 @@ function adminState() {
     feedbackList: Object.values(state.feedback).sort((a, b) => b.at - a.at).slice(0, 200),
     online: io.engine.clientsCount,
     sheet: { ...state.sheet, url: state.sheet.url || config.qaSheetUrl || '' },
-    google: { configured: googleAuth.configured(), connected: !!state.google, email: state.google?.email || '' },
+    google: { configured: googleAuth.configured(), connected: !!state.google, email: state.google?.email || '', composio: composio.configured() },
   };
 }
 
@@ -845,11 +846,12 @@ async function importSheet() {
   if (sheetBusy) return { ok: false, error: 'Đang đồng bộ…' };
   sheetBusy = true;
   try {
-    // Logged in with Google → read through the Sheets API (works for private sheets);
-    // otherwise fall back to the public CSV export.
+    // Source, in order: own Google login → Composio connection → public CSV export.
     const { questions, skipped } = state.google
       ? sheetSync.extractQuestions(await googleAuth.readRows(url, state.google))
-      : await sheetSync.fetchSheet(url);
+      : composio.configured()
+        ? sheetSync.extractQuestions(await composio.readRows(url))
+        : await sheetSync.fetchSheet(url);
     const have = new Set(state.questions.map((q) => q.sheetKey).filter(Boolean));
     let added = 0;
     for (const q of questions) {

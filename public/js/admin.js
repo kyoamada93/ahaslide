@@ -78,9 +78,11 @@
     const g = A.google || {};
     $('#googleRow').innerHTML = g.connected
       ? `<span class="pill ok-pill">✅ Google: ${esc(g.email || 'đã đăng nhập')}</span> <button class="btn small ghost" data-a="google-logout">Đăng xuất</button>`
-      : g.configured
-        ? `<a class="btn small google-btn" href="/auth/google?key=${encodeURIComponent(key)}">🔐 Đăng nhập Google để đọc sheet</a>`
-        : '<span class="muted tiny">🔐 Đăng nhập Google: chưa cấu hình GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET trên server (xem README).</span>';
+      : g.composio
+        ? '<span class="pill ok-pill">🧩 Đọc sheet qua Composio (đã kết nối)</span>'
+        : g.configured
+          ? `<a class="btn small google-btn" href="/auth/google?key=${encodeURIComponent(key)}">🔐 Đăng nhập Google để đọc sheet</a>`
+          : '<span class="muted tiny">🔐 Chưa kết nối Google: đặt COMPOSIO_API_KEY + COMPOSIO_CONNECTED_ACCOUNT_ID (Composio) hoặc GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET trên server — xem README.</span>';
     $('#sheetStatus').textContent = A.sheet.lastAt
       ? `Lần cuối ${new Date(A.sheet.lastAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}: ${A.sheet.lastMsg}${A.sheet.auto ? ' · tự động mỗi 1 phút' : ''}`
       : 'Chưa đồng bộ lần nào.';

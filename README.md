@@ -90,6 +90,18 @@ Trang admin → cột Q&A → **📄 Lấy câu hỏi từ Google Sheet**:
 
 Cột được nhận theo tiêu đề: "Câu hỏi…" là nội dung, "Timestamp" là thời gian, cột "…xử lý thế nào" dùng để lọc — chỉ lấy câu chọn *Cả hai* hoặc *Trả lời trực tiếp trong buổi Town Hall*. Câu đã lấy không bị lấy trùng khi đồng bộ lại; câu có từ ngữ không phù hợp được gắn ⚠️ cho moderator.
 
+### Qua Composio (không cần tạo OAuth Client trên Google Cloud)
+
+Composio giữ sẵn kết nối Google; server chỉ gọi API của Composio (`GOOGLESHEETS_GET_SHEET_NAMES`, `GOOGLESHEETS_BATCH_GET`).
+
+1. Đăng ký https://platform.composio.dev → tạo project → **Settings → API Keys** → copy key.
+2. Kết nối Google Sheets **trong cùng project đó**: Dashboard → *Auth Configs / Toolkits* → **Google Sheets** (Composio managed auth) → *Connect account* → đăng nhập Google bằng tài khoản xem được sheet → copy **Connected account ID** (`ca_…`).
+   Hoặc trên máy của bạn: `curl -fsSL https://composio.dev/install | sh` → `composio login` → `composio link googlesheets`.
+3. Railway → **Variables**: `COMPOSIO_API_KEY`, `COMPOSIO_CONNECTED_ACCOUNT_ID` (tuỳ chọn `COMPOSIO_SHEET_TAB=Form_Responses`).
+4. Admin → khung Google Sheet hiện **🧩 Đọc sheet qua Composio** → **🔄 Đồng bộ ngay**.
+
+Thứ tự nguồn khi đồng bộ: đăng nhập Google trực tiếp (nếu có) → Composio (nếu có cấu hình) → link CSV công khai.
+
 ### Đăng nhập Google (đọc sheet riêng tư, không cần chia sẻ công khai)
 
 Server chỉ xin quyền **đọc** Google Sheets (`spreadsheets.readonly`). Token lưu ở server, không gửi xuống trình duyệt.
