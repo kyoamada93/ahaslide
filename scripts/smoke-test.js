@@ -187,7 +187,7 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     const got = await fetch(`${URL}/brand/ai-data-logo`);
     assert.equal(got.headers.get('content-type'), 'image/jpeg', 'uploaded logo served');
     assert.equal((await fetch(`${URL}/api/brand/ai-data-logo?key=${KEY}`, { method: 'DELETE' })).status, 200);
-    assert.ok((await fetch(`${URL}/brand/ai-data-logo`)).headers.get('content-type').includes('svg'), 'default restored');
+    assert.ok((await fetch(`${URL}/brand/ai-data-logo`)).headers.get('content-type').includes('png'), 'default restored');
 
     console.log('✅ smoke test passed');
     users.forEach((s) => s.close()); admin.close();

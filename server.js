@@ -245,7 +245,7 @@ app.get('/moderator', (_req, res) => res.sendFile(path.join(pub, 'moderator.html
 app.get('/mc', (_req, res) => res.sendFile(path.join(pub, 'mc.html')));
 // Branding slots: an admin upload in DATA_DIR/brand overrides the bundled default asset.
 const BRAND = {
-  'ai-data-logo': 'assets/ai-data-logo.svg',
+  'ai-data-logo': 'assets/ai-data-logo.png',
   bg: 'assets/bg.jpg',
   'bg-mobile': 'assets/bg-mobile.jpg',
 };
@@ -283,7 +283,12 @@ app.delete('/api/brand/:slot', (req, res) => {
   io.emit('brand', slot);
   res.json({ ok: true });
 });
-app.use(express.static(pub, { maxAge: '1h' }));
+app.use(express.static(pub, {
+  setHeaders: (res, file) => {
+    // html/css/js are revalidated (cheap 304s) so a redeploy never mixes new HTML with stale CSS.
+    res.setHeader('Cache-Control', /\.(html|css|js)$/.test(file) ? 'no-cache' : 'public, max-age=3600');
+  },
+}));
 app.get('/vendor/wordcloud2.js', (_req, res) => res.sendFile(require.resolve('wordcloud/src/wordcloud2.js')));
 
 function lanIp() {

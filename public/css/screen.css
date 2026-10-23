@@ -239,3 +239,7 @@ html:not(.no-vt) .slide { animation: none; }
 @keyframes vt-out { to { opacity: 0; transform: scale(.985); } }
 @keyframes vt-in { from { opacity: 0; transform: scale(1.015); } }
 @media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: .01s !important; } }
+
+/* 3D AI&Data logo, top-left like the design mockup */
+.top { gap: 18px; align-items: center; }
+.top .brand-logo { height: 58px; width: auto; filter: drop-shadow(0 4px 10px rgba(28,100,200,.25)); }
