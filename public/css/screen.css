@@ -79,7 +79,9 @@ body { overflow: hidden; }
 .qa-grid .feature .q { font-size: clamp(30px, 3vw, 58px); font-weight: 800; line-height: 1.25; }
 .qa-grid .feature .who { margin-top: 24px; font-size: 22px; color: var(--muted); }
 .qa-grid .list { overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
-.qa-grid .item { padding: 16px 20px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; animation: pop2 .35s ease; }
+.qa-grid .item { padding: 16px 20px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.qa-grid .item.new { animation: pop2 .35s ease; }
+.qa-grid .feature .kicker { align-self: flex-start; }
 .qa-grid .item .t { font-size: 20px; font-weight: 600; line-height: 1.3; }
 .qa-grid .item .by { font-size: 14px; color: var(--muted); margin-top: 6px; }
 .qa-grid .item.answered { opacity: .5; }
@@ -159,3 +161,81 @@ body { overflow: hidden; }
 .poll.results-hidden .val { visibility: hidden; }
 .poll-timer { font-weight: 900; color: #fff; background: rgba(255,255,255,.15); padding: 2px 10px; border-radius: 999px; }
 .poll-timer.urgent { background: #e03131; animation: blink 1s infinite; }
+
+/* ===================================================================== light theme (pink AI&Data bg) */
+body.light { color: #3d0029; --muted: #8a3d6c; }
+body.light .bg { background-position: center; }
+body.light .bg-fx { display: none; }
+body.light .glass { background: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 12px 40px rgba(165,0,100,.14); backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.light .poll-box, body.light .qa-grid .feature, body.light .qa-grid .item, body.light .qr-card, body.light .agenda, body.light .stat { background: rgba(255,255,255,.82); }
+body.light .slide h1 { color: #8a0052; text-shadow: none; }
+body.light .slide .sub { color: #8a3d6c; }
+body.light .kicker { background: #fff; color: #c2185b; border: 0; box-shadow: 0 4px 14px rgba(165,0,100,.15); }
+body.light .count-chip { background: #fff; color: #3d0029; }
+body.light .dots span { background: rgba(165,0,100,.18); }
+body.light .dots span.on { background: #a50064; }
+body.light .dots span.done { background: #ff8ac2; }
+body.light .bottom .muted { color: #a0527f; }
+/* check-in */
+body.light .checkin .big-count { background: linear-gradient(135deg, #a50064, #ff3d9a); -webkit-background-clip: text; background-clip: text; }
+body.light .names span { background: #fff; border-color: rgba(165,0,100,.15); color: #6b0a47; }
+body.light .qr-url { color: #6b0a47; }
+/* word cloud */
+body.light .empty, body.light .meta { color: #8a3d6c; }
+/* poll */
+body.light .opt .num { background: rgba(165,0,100,.12); color: #a50064; }
+body.light .opt .bar-wrap { background: rgba(165,0,100,.07); }
+body.light .opt .bar { background: linear-gradient(90deg, #ffc2de, #ff8ac2); }
+body.light .opt.lead .bar { background: linear-gradient(90deg, #ffe066, #ffb84d); }
+body.light .opt .label { color: #3d0029; text-shadow: none; }
+body.light .opt .val { color: #8a0052; }
+body.light .opt .val small { color: #a0527f; }
+body.light .poll-status { color: #8a3d6c; }
+body.light .poll-timer { background: rgba(165,0,100,.12); color: #a50064; }
+body.light .poll-timer.urgent { background: #e03131; color: #fff; }
+/* section / speaker */
+body.light .speaker h1 { color: #8a0052; }
+body.light .speaker .topic { color: #3d0029; }
+body.light .agenda .ag-t { color: #3d0029; }
+body.light .agenda ul { color: #5c2a4b; }
+body.light .speaker .ask { color: #6b0a47; }
+.speaker.section { flex-direction: row; align-items: center; justify-content: flex-start; gap: 60px; text-align: left; }
+.speaker.section .sec-head { flex: .85; }
+.speaker.section .sec-head h1 { font-size: clamp(56px, 6vw, 120px); line-height: 1.02; }
+.speaker.section .agenda { flex: 1.15; }
+/* Q&A */
+body.light .qa-grid .feature .q { color: #3d0029; }
+body.light .qa-grid .feature .who, body.light .qa-grid .item .by { color: #8a3d6c; }
+body.light .qa-grid .item .t { color: #3d0029; }
+body.light .qa-grid .votes { background: rgba(165,0,100,.1); color: #a50064; }
+/* feedback */
+body.light .stat span { color: #8a3d6c; }
+
+/* ===================================================================== join QR (sized for the back row) */
+/* Scan distance ≈ 10 × QR width: this card is ~1/5 of the screen width; press Q for a full-screen QR. */
+.side-join { position: fixed; top: 22px; right: 40px; width: 360px; padding: 16px 16px 14px; display: flex; flex-direction: column; align-items: center; z-index: 6; border-radius: 26px; }
+.side-qr { width: 328px; height: 328px; background: #fff; border-radius: 18px; padding: 10px; }
+.side-qr svg { width: 100%; height: 100%; display: block; }
+.side-lbl { margin-top: 10px; font-size: 22px; font-weight: 800; }
+.side-url { font-size: 17px; word-break: break-all; text-align: center; opacity: .85; }
+body.light .side-lbl { color: #8a0052; }
+body.light .side-url { color: #6b0a47; }
+body:not(.with-join) #sideJoin { display: none; }
+body.with-join #stage { right: 430px; }
+body.with-join #miniQr { view-transition-name: m-qr; }
+.top { justify-content: flex-start; }
+.qr-overlay { position: fixed; inset: 0; z-index: 40; background: rgba(255, 236, 246, .94); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.qr-overlay-box { background: #fff; border-radius: 28px; padding: 22px; box-shadow: 0 20px 80px rgba(165,0,100,.25); }
+.qr-overlay-code { width: min(84vh, 90vw); height: min(84vh, 90vw); }
+.qr-overlay-code svg { width: 100%; height: 100%; display: block; }
+.qr-overlay-txt { font-size: 30px; color: #6b0a47; font-weight: 700; }
+
+/* ===================================================================== morph transitions */
+html:not(.no-vt) .slide { animation: none; }
+::view-transition-group(*) { animation-duration: .8s; animation-timing-function: cubic-bezier(.22,.9,.24,1); }
+::view-transition-old(root) { animation: vt-out .45s ease both; }
+::view-transition-new(root) { animation: vt-in .6s cubic-bezier(.22,.9,.24,1) both; }
+::view-transition-old(m-panel), ::view-transition-new(m-panel) { height: 100%; object-fit: cover; }
+@keyframes vt-out { to { opacity: 0; transform: scale(.985); } }
+@keyframes vt-in { from { opacity: 0; transform: scale(1.015); } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: .01s !important; } }

@@ -9,22 +9,23 @@
 <link rel="stylesheet" href="/css/common.css">
 <link rel="stylesheet" href="/css/screen.css">
 </head>
-<body>
+<body class="light">
 <div class="bg"></div>
 <canvas class="bg-fx" id="fx"></canvas>
 
 <header class="top">
-  <div class="logos">
-    <img class="aidata" src="/brand/ai-data-logo" alt="AI & Data">
-  </div>
-  <div class="top-right">
-    <div class="count-chip glass"><span class="dot"></span><b id="checkedCount">0</b>&nbsp;đã check-in</div>
-    <div class="mini-join glass" id="miniJoin">
-      <div class="mini-qr" id="miniQr"></div>
-      <div><div class="muted small">Tham gia tại</div><b id="miniUrl"></b></div>
-    </div>
-  </div>
+  <div class="count-chip glass"><span class="dot"></span><b id="checkedCount">0</b>&nbsp;đã check-in</div>
 </header>
+<!-- Join QR kept large so it scans from the back of the room; morphs from the big check-in QR. -->
+<aside class="side-join glass" id="sideJoin">
+  <div class="side-qr qr-morph" id="miniQr"></div>
+  <div class="side-lbl">📱 Quét để tham gia</div>
+  <b class="side-url" id="miniUrl"></b>
+</aside>
+<div class="qr-overlay hidden" id="qrOverlay">
+  <div class="qr-overlay-box"><div class="qr-overlay-code" id="qrOverlayCode"></div></div>
+  <div class="qr-overlay-txt">📱 Quét mã để tham gia · <b id="qrOverlayUrl"></b></div>
+</div>
 
 <main id="stage"></main>
 

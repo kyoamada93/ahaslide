@@ -21,6 +21,7 @@
     if (!isMod) {
       $('#openScreen').href = '/screen?key=' + encodeURIComponent(k);
       $('#openMod').href = '/moderator?key=' + encodeURIComponent(k);
+      $('#openMc').href = '/mc?key=' + encodeURIComponent(k);
       $('#preview').src = '/screen';
       $('#exports').innerHTML = ['checkins', 'words', 'votes', 'questions', 'race', 'feedback']
         .map((w) => `<a class="btn small ghost" href="/api/export/${w}?key=${encodeURIComponent(k)}">${w}</a>`).join('');
@@ -87,6 +88,15 @@
         return;
       }
       case 'qa': return action({ type: 'qa:status', qid: d.id, status: d.s });
+      case 'qa-add': {
+        const box = $('#qaNew');
+        const text = box.value.trim();
+        if (text.length < 3) return toast('Nhập nội dung câu hỏi');
+        const res = await action({ type: 'qa:add', text, pending: d.pending === '1' });
+        if (res.ok) { box.value = ''; toast(d.pending === '1' ? 'Đã thêm vào chờ duyệt' : 'Đã thêm và hiển thị ✅'); }
+        return;
+      }
+      case 'qr-toggle': return action({ type: 'qr:toggle' });
       case 'qa-hl': return action({ type: 'qa:highlight', qid: d.id });
       case 'qa-del': if (confirm('Xoá câu hỏi này?')) action({ type: 'qa:delete', qid: d.id }); return;
       case 'tab': qaTab = d.t; return renderQa();
@@ -113,6 +123,8 @@
     $('#stUsers').textContent = A.users.length;
     $('#curTitle').textContent = `${S.slideIndex + 1}. ${S.slide.title}${S.slide.speaker ? ' — ' + S.slide.speaker : ''}`;
     if (isMod) return;
+    $('#qrBtn').textContent = S.bigQr ? '✖ Tắt QR toàn màn hình' : '📱 QR toàn màn hình';
+    $('#qrBtn').classList.toggle('ok', !!S.bigQr);
     $('#stOnline').textContent = A.online;
     $('#curType').textContent = TYPE_LABEL[S.slide.type] || S.slide.type;
     $('#slideList').innerHTML = S.slides.map((sl, i) => `<li data-a="goto" data-i="${i}" class="${i === S.slideIndex ? 'on' : ''}"><span class="i">${i + 1}</span><div>${esc(sl.title)}${sl.speaker ? ' — ' + esc(sl.speaker) : ''}<small>${TYPE_LABEL[sl.type] || sl.type}</small></div></li>`).join('');
@@ -144,7 +156,7 @@
         ${left ? `<span class="pill">⏱ còn ~${left}s</span>` : ''}</div>
         <div class="fb-list">${sl.options.map((o, i) => ({ o, c: p.counts[i] })).sort((a, b) => b.c - a.c).map((x, i) => `<div><b>${x.c}</b> · ${i === 0 && x.c ? '🏆 ' : ''}${esc(x.o)}</div>`).join('')}</div>`;
     },
-    speaker: (sl) => `<p>Đang sharing: <b>${esc(sl.speaker)}</b> — ${esc(sl.topic || '')}</p><p class="muted tiny">Khán giả có thể gửi câu hỏi cho speaker này; duyệt ở cột Q&A.</p>`,
+    speaker: (sl) => `<p>Đang chiếu: <b>${esc(sl.speaker || `${sl.kicker || 'Mục'}: ${sl.title}`)}</b>${sl.topic ? ' — ' + esc(sl.topic) : ''}</p><p class="muted tiny">Khán giả có thể gửi câu hỏi trong lúc sharing; duyệt ở cột Q&A.</p>`,
     qa: () => `<p class="muted">Duyệt câu hỏi ở cột bên phải. ⭐ Highlight = hiển thị to trên màn hình (đang trả lời).</p>`,
     race: () => {
       const r = A.race;
@@ -177,7 +189,7 @@
       <div class="qa-item ${q.highlighted ? 'hl' : ''} ${q.flagged ? 'flag' : ''}">
         ${q.flagged ? '<div class="flag-note">⚠️ Có thể chứa từ ngữ không phù hợp — kiểm tra trước khi duyệt</div>' : ''}
         <div class="t">${esc(q.text)}</div>
-        <div class="by">${esc(q.name)} → ${esc(q.target)} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
         <div class="row">
           ${q.status !== 'approved' ? `<button class="btn small ok" data-a="qa" data-s="approved" data-id="${q.id}">✅ Approve</button>` : ''}
           ${q.status === 'approved' ? `<button class="btn small warn" data-a="qa-hl" data-id="${q.id}">${q.highlighted ? '⭐ Bỏ highlight' : '⭐ Highlight'}</button>` : ''}

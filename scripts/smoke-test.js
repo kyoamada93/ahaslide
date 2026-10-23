@@ -14,7 +14,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
 
 (async () => {
-  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, ADMIN_KEY: KEY, DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'inherit'] });
+  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: { ...process.env, PORT, ADMIN_KEY: KEY, MC_KEY: 'mc-key', DATA_DIR: dataDir }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((r) => srv.stdout.on('data', (d) => String(d).includes('running') && r()));
   let failed = false;
   try {
@@ -27,7 +27,7 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     const act = async (a) => { const r = await call(admin, 'admin:action', a); assert.ok(r.ok, JSON.stringify([a, r])); await wait(250); };
 
     // HTTP pages + QR
-    for (const p of ['/', '/screen', '/admin', '/moderator', '/vendor/wordcloud2.js', '/assets/bg.jpg', '/brand/ai-data-logo', '/brand/bg']) {
+    for (const p of ['/', '/screen', '/admin', '/moderator', '/mc', '/vendor/wordcloud2.js', '/assets/bg.jpg', '/brand/ai-data-logo', '/brand/bg']) {
       const r = await fetch(URL + p); assert.equal(r.status, 200, p);
     }
     const j = await (await fetch(URL + '/api/join')).json();
@@ -92,9 +92,11 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     await act({ type: 'poll:toggle', slideId: 'topic-vote' });
     phone.close();
 
-    // 4-5. Speakers
-    await act({ type: 'next' }); assert.equal(pub.slide.speaker, 'Anh Dũng');
-    await act({ type: 'next' }); assert.equal(pub.slide.speaker, 'Chị Yên');
+    // 4. Sharing section
+    await act({ type: 'next' }); assert.equal(pub.slide.title, 'Food of Thought');
+    assert.ok(pub.slide.agenda.length >= 3, 'agenda shown');
+    await act({ type: 'qr:toggle' }); assert.equal(pub.bigQr, true, 'full-screen QR on');
+    await act({ type: 'qr:toggle' }); assert.equal(pub.bigQr, false, 'full-screen QR off');
 
     // 6. Q&A with moderation
     await act({ type: 'next' }); assert.equal(pub.slide.type, 'qa');
@@ -115,6 +117,32 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     assert.equal((await call(users[5], 'qa:upvote', q2.id)).ok, false, 'cannot upvote rejected');
     await wait(300);
     assert.equal(pub.questions[0].id, q1.id, 'sorted by upvotes');
+    // organiser-added questions: straight to the live queue, or held for review
+    await act({ type: 'qa:add', text: 'Câu hỏi từ ban tổ chức?' });
+    assert.ok(pub.questions.find((q) => q.text === 'Câu hỏi từ ban tổ chức?'), 'admin question shown');
+    await act({ type: 'qa:add', text: 'Câu hỏi chờ duyệt?', pending: true });
+    assert.ok(!pub.questions.find((q) => q.text === 'Câu hỏi chờ duyệt?'), 'pending admin question hidden');
+    assert.equal((await call(users[1], 'admin:action', { type: 'qa:add', text: 'hack' })).ok, false, 'audience cannot add as admin');
+    // MC page: limited role — can pick/answer questions, cannot drive slides or reset
+    const mc = await connect();
+    assert.equal((await call(mc, 'admin:auth', 'mc-key')).role, 'mc');
+    const mcAct = (a) => call(mc, 'admin:action', a);
+    assert.ok((await mcAct({ type: 'qa:highlight', qid: q1.id })).ok, 'mc picks a question');
+    await wait(250);
+    assert.equal(pub.questions[0].id, q1.id, 'picked question on screen');
+    assert.ok((await mcAct({ type: 'qa:next' })).ok, 'mc next');
+    await wait(250);
+    assert.equal(adm.questions.find((q) => q.id === q1.id).status, 'answered', 'previous marked answered');
+    assert.ok(pub.questions.find((q) => q.highlighted && q.id !== q1.id), 'next question highlighted');
+    assert.equal((await mcAct({ type: 'next' })).ok, false, 'mc cannot change slides');
+    assert.equal((await mcAct({ type: 'reset:all', confirm: 'RESET' })).ok, false, 'mc cannot reset');
+    assert.equal((await mcAct({ type: 'qa:status', qid: q2.id, status: 'rejected' })).ok, false, 'mc cannot reject');
+    assert.equal((await mcAct({ type: 'goto', index: 0 })).ok, false, 'mc can only open the Q&A slide');
+    assert.ok((await mcAct({ type: 'goto', index: pub.slides.findIndex((x) => x.type === 'qa') })).ok, 'mc opens Q&A slide');
+    mc.close();
+    await act({ type: 'qa:status', qid: q1.id, status: 'approved' });
+    const lit = adm.questions.find((q) => q.highlighted);
+    if (lit) await act({ type: 'qa:highlight', qid: lit.id }); // clear what the MC put up
     await act({ type: 'qa:highlight', qid: q0.id });
     assert.equal(pub.questions[0].id, q0.id, 'highlight first');
 

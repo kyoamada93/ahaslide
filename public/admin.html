@@ -21,8 +21,10 @@
     <div class="row stats-row">
       <span class="pill">👥 <b id="stUsers">0</b> check-in</span>
       <span class="pill">🟢 <b id="stOnline">0</b> online</span>
+      <button class="btn small ghost" data-a="qr-toggle" id="qrBtn">📱 QR toàn màn hình</button>
       <a class="btn small ghost" id="openScreen" target="_blank">Mở màn hình chiếu ↗</a>
       <a class="btn small ghost" id="openMod" target="_blank">Moderator ↗</a>
+      <a class="btn small ghost" id="openMc" target="_blank">🎤 MC ↗</a>
     </div>
   </header>
 
@@ -52,7 +54,11 @@
 
     <section class="glass box">
       <h3>Q&A — duyệt câu hỏi</h3>
-      <div class="tabs" id="qaTabs"></div>
+      <div class="qa-add">
+      <textarea id="qaNew" maxlength="300" placeholder="➕ Thêm câu hỏi (ban tổ chức / câu hỏi gom từ kênh khác)…"></textarea>
+      <div class="row"><button class="btn small ok" data-a="qa-add">➕ Thêm &amp; hiển thị ngay</button><button class="btn small ghost" data-a="qa-add" data-pending="1">Thêm vào chờ duyệt</button></div>
+    </div>
+    <div class="tabs" id="qaTabs"></div>
       <div id="qaList" class="qa-list"></div>
     </section>
   </div>

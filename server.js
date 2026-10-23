@@ -21,6 +21,9 @@ const { hasProfanity } = require('./profanity');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
+// Optional separate key for the MC page: it can only pick/answer Q&A questions.
+const MC_KEY = process.env.MC_KEY || '';
+const MC_ACTIONS = new Set(['qa:highlight', 'qa:status', 'qa:next', 'goto']);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const CONFIG_FILE = process.env.CONFIG_FILE || path.join(__dirname, 'config.json');
@@ -49,6 +52,7 @@ function freshState() {
     questions: [], // {id,userId,name,text,target,status,highlighted,upvotes[],createdAt}
     race: freshRace(),
     raceHistory: [],
+    bigQr: false, // full-screen join QR on the projector
     feedback: {}, // userId -> {...}
   };
 }
@@ -185,6 +189,7 @@ function publicState() {
     slides: slides.map((s) => ({ id: s.id, type: s.type, title: s.title, speaker: s.speaker })),
     slide,
     checkedIn: Object.keys(state.users).length,
+    bigQr: !!state.bigQr,
     recentNames: Object.values(state.users).sort((a, b) => b.checkedInAt - a.checkedInAt).slice(0, 30).map((u) => u.name),
     questions: approvedQuestions(),
   };
@@ -237,6 +242,7 @@ app.get('/', (_req, res) => res.sendFile(path.join(pub, 'audience.html')));
 app.get('/screen', (_req, res) => res.sendFile(path.join(pub, 'screen.html')));
 app.get('/admin', (_req, res) => res.sendFile(path.join(pub, 'admin.html')));
 app.get('/moderator', (_req, res) => res.sendFile(path.join(pub, 'moderator.html')));
+app.get('/mc', (_req, res) => res.sendFile(path.join(pub, 'mc.html')));
 // Branding slots: an admin upload in DATA_DIR/brand overrides the bundled default asset.
 const BRAND = {
   'ai-data-logo': 'assets/ai-data-logo.svg',
@@ -315,7 +321,7 @@ app.get('/healthz', (_req, res) => {
 });
 app.get('/api/join', async (req, res) => {
   const url = joinUrl(req);
-  const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#1a0010', light: '#ffffff' } });
+  const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'L', color: { dark: '#1a0010', light: '#ffffff' } });
   res.json({ url, svg });
 });
 
@@ -365,7 +371,7 @@ function broadcast(urgent = false) {
   if (urgent) {
     clearTimeout(screenTimer); clearTimeout(audienceTimer);
     screenTimer = audienceTimer = null;
-    io.to('screen').to('admin').emit('state', publicState());
+    io.to('screen').to('admin').to('mc').emit('state', publicState());
     io.to('admin').emit('admin', adminState());
     io.to('aud').emit('state', audienceState());
     return;
@@ -373,7 +379,7 @@ function broadcast(urgent = false) {
   if (!screenTimer) {
     screenTimer = setTimeout(() => {
       screenTimer = null;
-      io.to('screen').to('admin').emit('state', publicState());
+      io.to('screen').to('admin').to('mc').emit('state', publicState());
       io.to('admin').emit('admin', adminState());
     }, 150);
   }
@@ -499,6 +505,7 @@ function limited(socket, perSec = 8) {
 io.on('connection', (socket) => {
   let userId = null;
   let isAdmin = false;
+  let isMc = false;
   const ack = (cb, payload) => typeof cb === 'function' && cb(payload);
 
   socket.join('aud');
@@ -512,13 +519,24 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin:auth', (key, cb) => {
-    if (key !== ADMIN_KEY) return ack(cb, { ok: false });
-    isAdmin = true;
-    socket.leave('aud');
-    socket.join('admin');
-    ack(cb, { ok: true });
-    socket.emit('state', publicState());
-    socket.emit('admin', adminState());
+    if (key === ADMIN_KEY) {
+      isAdmin = true;
+      socket.leave('aud');
+      socket.join('admin');
+      ack(cb, { ok: true, role: 'admin' });
+      socket.emit('state', publicState());
+      socket.emit('admin', adminState());
+      return;
+    }
+    if (MC_KEY && key === MC_KEY) {
+      isMc = true;
+      socket.leave('aud');
+      socket.join('mc');
+      ack(cb, { ok: true, role: 'mc' });
+      socket.emit('state', publicState());
+      return;
+    }
+    ack(cb, { ok: false });
   });
 
   // ----- audience identity
@@ -589,7 +607,7 @@ io.on('connection', (socket) => {
       // Q&A is always anonymous: the asker's name is never stored with the question.
       // Questions with profanity stay pending and are flagged for the moderator.
       id: newId(), userId, name: 'Ẩn danh', text: t, flagged: PROFANITY_FILTER && hasProfanity(t),
-      target: config.qaTargets.includes(target) ? target : config.qaTargets[0],
+      target: (config.qaTargets || []).includes(target) ? target : (config.qaTargets || [])[0] || '',
       status: 'pending', highlighted: false, upvotes: [], createdAt: Date.now(),
     });
     ack(cb, { ok: true });
@@ -653,7 +671,11 @@ io.on('connection', (socket) => {
 
   // ----- admin / moderator actions
   socket.on('admin:action', (a = {}, cb) => {
-    if (!isAdmin) return ack(cb, { ok: false, error: 'unauthorized' });
+    // MC role: only choose / answer questions and bring the Q&A slide up.
+    const mcAllowed = isMc && MC_ACTIONS.has(a.type)
+      && (a.type !== 'qa:status' || ['answered', 'approved'].includes(a.status))
+      && (a.type !== 'goto' || slides[a.index]?.type === 'qa');
+    if (!isAdmin && !mcAllowed) return ack(cb, { ok: false, error: 'unauthorized' });
     const q = a.qid && state.questions.find((x) => x.id === a.qid);
     switch (a.type) {
       case 'goto':
@@ -665,7 +687,7 @@ io.on('connection', (socket) => {
         if (q && ['pending', 'approved', 'rejected', 'answered'].includes(a.status)) {
           q.status = a.status;
           if (a.status !== 'approved') q.highlighted = false;
-          pushMe(q.userId);
+          if (q.userId) pushMe(q.userId);
         }
         break;
       case 'qa:highlight':
@@ -676,6 +698,27 @@ io.on('connection', (socket) => {
           if (on) q.status = 'approved';
         }
         break;
+      case 'qa:next': {
+        // Mark the question on screen as answered and put the next top question up.
+        const cur = state.questions.find((x) => x.highlighted);
+        if (cur) { cur.highlighted = false; cur.status = 'answered'; }
+        const next = state.questions
+          .filter((x) => x.status === 'approved')
+          .sort((x, y) => y.upvotes.length - x.upvotes.length || x.createdAt - y.createdAt)[0];
+        if (next) next.highlighted = true;
+        break;
+      }
+      case 'qa:add': {
+        // Organisers can seed questions; they go straight to the live queue.
+        const t = clean(a.text, 300);
+        if (t.length < 3) return ack(cb, { ok: false, error: 'Câu hỏi quá ngắn' });
+        state.questions.push({
+          id: newId(), userId: null, name: 'Ban tổ chức', text: t, target: '', flagged: false,
+          status: a.pending ? 'pending' : 'approved', highlighted: false, upvotes: [], createdAt: Date.now(),
+        });
+        break;
+      }
+      case 'qr:toggle': state.bigQr = !state.bigQr; break;
       case 'qa:delete':
         state.questions = state.questions.filter((x) => x.id !== a.qid);
         break;
@@ -728,7 +771,7 @@ io.on('connection', (socket) => {
         return ack(cb, { ok: false, error: 'unknown action' });
     }
     ack(cb, { ok: true });
-    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight'].includes(a.type));
+    broadcast(['goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));
@@ -755,6 +798,7 @@ server.listen(PORT, () => {
   console.log(`  Screen   : http://localhost:${PORT}/screen`);
   console.log(`  Admin    : http://localhost:${PORT}/admin?key=${ADMIN_KEY}`);
   console.log(`  Moderator: http://localhost:${PORT}/moderator?key=${ADMIN_KEY}`);
+  console.log(`  MC       : http://localhost:${PORT}/mc?key=${MC_KEY || ADMIN_KEY}`);
 });
 
 function shutdown() {

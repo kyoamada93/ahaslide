@@ -68,7 +68,7 @@
       <div class="kick">Q&A</div>
       <h2>Đặt câu hỏi${target ? ' cho ' + esc(target) : ''}</h2>
       <textarea id="qText" maxlength="300" placeholder="Câu hỏi của bạn…"></textarea>
-      ${target ? `<input type="hidden" id="qTarget" value="${esc(target)}">` : `<label for="qTarget">Gửi tới</label><select id="qTarget">${S.qaTargets.map((t) => `<option>${esc(t)}</option>`).join('')}</select>`}
+      ${target || (S.qaTargets || []).length < 2 ? `<input type="hidden" id="qTarget" value="${esc(target || '')}">` : `<label for="qTarget">Gửi tới</label><select id="qTarget">${S.qaTargets.map((t) => `<option>${esc(t)}</option>`).join('')}</select>`}
       <p class="muted" style="font-size:13px;margin-top:8px">🔒 Câu hỏi luôn được gửi <b>ẩn danh</b>.</p>
       <button class="btn block" data-act="ask">Gửi câu hỏi</button>
       <p class="muted" style="font-size:13px;margin-top:10px">Câu hỏi sẽ hiển thị sau khi moderator duyệt.</p>
@@ -138,8 +138,8 @@
 
     speaker: (sl) => `
       <div class="card glass center">
-        <div class="kick">${esc(sl.title || 'Sharing')}</div>
-        <h2>🎤 ${esc(sl.speaker)}</h2>
+        <div class="kick">${esc(sl.speaker ? sl.title || 'Sharing' : sl.kicker || 'Mục')}</div>
+        <h2>${sl.speaker ? '🎤 ' + esc(sl.speaker) : '🍽️ ' + esc(sl.title)}</h2>
         <p>${esc(sl.topic || '')}</p>
         ${(sl.agenda || []).map((a, i) => `<div style="text-align:left;margin-top:12px"><b>${i + 1}. ${esc(a.title)}</b><div class="muted" style="font-size:14px">${(a.items || []).map(esc).join(' · ')}</div></div>`).join('')}
       </div>
@@ -156,7 +156,7 @@
         <h2>Upvote câu hỏi bạn quan tâm</h2>
         <div class="seg"><button data-act="qa-sort" data-s="top" class="${qaSort === 'top' ? 'on' : ''}">🔥 Top</button><button data-act="qa-sort" data-s="new" class="${qaSort === 'new' ? 'on' : ''}">🕒 Mới nhất</button></div>
         ${list.length ? list.map((q) => `
-          <div class="qitem"><div><div class="t">${q.highlighted ? '🎤 ' : ''}${esc(q.text)}</div><div class="by">${q.target ? '→ ' + esc(q.target) : 'Ẩn danh'}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div>
+          <div class="qitem"><div><div class="t">${q.highlighted ? '🎤 ' : ''}${esc(q.text)}</div><div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div>
             <button class="up ${up.has(q.id) ? 'on' : ''}" data-act="upvote" data-id="${q.id}" ${q.status === 'answered' ? 'disabled' : ''}>▲ ${q.upvotes}</button></div>`).join('') : '<p class="muted">Chưa có câu hỏi nào được duyệt.</p>'}
       </div>
       ${myQuestions()}`;

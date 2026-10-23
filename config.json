@@ -37,46 +37,11 @@
       "hideResults": false
     },
     {
-      "id": "sharing-dung",
+      "id": "food-of-thought",
       "type": "speaker",
-      "title": "Sharing",
-      "speaker": "Anh Dũng",
-      "role": "AI & Data",
-      "topic": "Insight · Highlight · People",
-      "photo": "",
-      "agenda": [
-        {
-          "title": "Insight",
-          "items": [
-            "Macro + Company",
-            "External: APAC → MoMo; đối thủ bên ngoài",
-            "Internal: các thay đổi trong công ty"
-          ]
-        },
-        {
-          "title": "Highlight",
-          "items": [
-            "Những thay đổi mới (new changes)",
-            "Những điểm cần củng cố (reinforce)"
-          ]
-        },
-        {
-          "title": "People",
-          "items": [
-            "MoMo Talent 2026",
-            "Culture: Teamwork, v.v."
-          ]
-        }
-      ]
-    },
-    {
-      "id": "sharing-yen",
-      "type": "speaker",
-      "title": "Sharing",
-      "speaker": "Chị Yên",
-      "role": "AI & Data",
-      "topic": "Insight · Highlight · People",
-      "photo": "",
+      "kicker": "Mục",
+      "title": "Food of Thought",
+      "topic": "",
       "agenda": [
         {
           "title": "Insight",
@@ -125,9 +90,5 @@
       "subtitle": "Dành 1 phút đánh giá & góp ý cho Townhall kỳ sau nhé"
     }
   ],
-  "qaTargets": [
-    "Chung",
-    "Anh Dũng",
-    "Chị Yên"
-  ]
+  "qaTargets": []
 }

@@ -7,8 +7,7 @@
 | 1 | **Check-in** | Quét QR → nhập tên, team | QR lớn, số người check-in, tên hiện realtime |
 | 2 | **Word cloud** "Bạn mong muốn gì ở Townhall?" | Nhập tối đa 3 từ khoá (lọc từ tục tiếng Việt/Anh) | Word cloud cập nhật trực tiếp |
 | 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic (đổi được đến khi đóng vote) | Biểu đồ cột realtime; có thể **ẩn kết quả đến khi công bố** và **hẹn giờ tự đóng vote** |
-| 4 | **Sharing — Anh Dũng** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
-| 5 | **Sharing — Chị Yên** | Gửi câu hỏi cho speaker | Slide giới thiệu speaker |
+| 4 | **Mục: Food of Thought** | Xem agenda, gửi câu hỏi | Agenda Insight · Highlight · People |
 | 6 | **Q&A realtime** (luôn **ẩn danh**) | Gửi câu hỏi, upvote câu đã duyệt | Chỉ hiện câu hỏi **moderator đã Approve**; câu Highlight hiện to |
 | 7 | **Đua vịt** | Bấm "Tham gia đua", **chọn màu vịt**, tap liên tục để vịt tăng tốc (thanh tốc độ, BOOST, vị trí realtime) | Dòng sông dài, camera bám theo vịt dẫn đầu, đèn xuất phát, bảng dẫn đầu, mini-map, podium + pháo giấy |
 | 8 | **Đánh giá & góp ý** | Chấm sao + góp ý cho kỳ sau | Số lượt đánh giá, điểm trung bình |
@@ -53,7 +52,10 @@ Server in ra các đường dẫn:
 - **Màn hình chiếu:** `http://<host>:3000/screen?key=<ADMIN_KEY>` — bấm `F` để toàn màn hình; dùng `←/→`, `PageUp/PageDown` hoặc clicker để chuyển slide. (Mở `/screen` không có key = chỉ hiển thị.)
 - **Bảng điều khiển presenter:** `http://<host>:3000/admin?key=<ADMIN_KEY>` — danh sách slide, nút Trước/Tiếp, xem trước màn hình, điều khiển từng slide (đóng/mở vote, lọc từ khoá xấu, bắt đầu đua vịt, đua lại…), duyệt Q&A, xuất CSV.
 - **Moderator Q&A:** `http://<host>:3000/moderator?key=<ADMIN_KEY>` — giao diện riêng chỉ để Approve / Highlight / Đã trả lời / Ẩn câu hỏi.
+- **MC:** `http://<host>:3000/mc?key=<MC_KEY hoặc ADMIN_KEY>` — MC chọn câu hỏi đã duyệt để đưa lên màn hình, bấm *Đã trả lời* / *Câu tiếp theo*, chuyển màn hình sang Q&A. Đặt biến `MC_KEY` để MC chỉ có đúng các quyền này (không chuyển slide, không reset).
 - **Khán giả:** `http://<host>:3000/` (mã QR trên màn hình trỏ tới đây).
+
+Màn hình chiếu: chuyển slide bằng hiệu ứng **Morph** (tiêu đề, khung nội dung, QR "trượt" sang vị trí mới như PowerPoint Morph — dùng View Transitions API của Chrome/Edge). QR tham gia luôn hiện to ở góc phải; bấm **Q** (hoặc nút *QR toàn màn hình* trong admin) để hiện QR chiếm cả màn hình — quét được từ 10 m+ (quy tắc: khoảng cách quét ≈ 10 × cạnh QR).
 
 Admin key mặc định là `momo-aidata`, **hãy đổi khi chạy thật**.
 
@@ -73,6 +75,7 @@ Nếu mở `/screen` qua tên miền công khai thì QR tự lấy tên miền �
 |------|----------|---------|
 | `PORT` | `3000` | Cổng HTTP |
 | `ADMIN_KEY` | `momo-aidata` | Mật khẩu cho admin / moderator / điều khiển màn hình |
+| `MC_KEY` | (trống = dùng `ADMIN_KEY`) | Mã riêng cho trang MC, chỉ chọn/trả lời câu hỏi |
 | `PUBLIC_URL` | tự phát hiện (trên Render dùng `RENDER_EXTERNAL_URL`) | URL khán giả dùng (mã hoá trong QR) |
 | `DATA_DIR` | `./data` | Nơi lưu `state.json` (tự lưu mỗi giây, khởi động lại không mất dữ liệu) |
 | `CONFIG_FILE` | `./config.json` | File cấu hình chương trình |

@@ -47,3 +47,7 @@ body.admin { overflow: auto; }
 .brand .slot input[type=file] { display: none; }
 .qa-item.flag { border-color: #ff6b6b; }
 .flag-note { font-size: 12px; font-weight: 700; color: #ffa8a8; margin-bottom: 6px; }
+.qa-add { margin-bottom: 12px; }
+.qa-add textarea { min-height: 64px; margin-bottom: 8px; }
+/* Control pages keep a dark backdrop; the pink branded image is for the projector. */
+body.admin .bg { background: radial-gradient(circle at 80% 10%, #7a0050, transparent 55%), linear-gradient(135deg, #1f0013, #4a0030); }

@@ -27,7 +27,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await phone.click('[data-act=checkin]');
   await wait(800);
 
-  const slides = ['checkin', 'wordcloud', 'poll', 'speaker1', 'speaker2', 'qa', 'race', 'feedback'];
+  const slides = ['checkin', 'wordcloud', 'poll', 'section', 'qa', 'race', 'feedback'];
   for (let i = 0; i < slides.length; i++) {
     await act({ type: 'goto', index: i });
     await wait(6000);
@@ -60,7 +60,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await wait(2500);
   await adm.screenshot({ path: path.join(OUT, 'admin.png') });
   const mod = await browser.newPage({ viewport: { width: 1200, height: 900 } });
-  await act({ type: 'goto', index: 5 });
+  await act({ type: 'goto', index: 4 });
   await mod.goto('http://localhost:3000/moderator?key=' + KEY);
   await wait(1500);
   await mod.screenshot({ path: path.join(OUT, 'moderator.png') });

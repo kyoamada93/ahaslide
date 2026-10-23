@@ -1,0 +1,18 @@
+.mc .ad-top { padding: 14px 18px; }
+.mc-title { margin: 0; font-size: 22px; }
+.mc .box { margin: 0 18px 14px; }
+.mc-now { border: 2px solid #ffd43b; }
+.mc-label { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #ffe066; margin-bottom: 8px; }
+.mc-now-text { font-size: clamp(22px, 3vw, 34px); font-weight: 800; line-height: 1.3; min-height: 60px; }
+.mc-actions { margin-top: 14px; flex-wrap: wrap; }
+.mc-actions .btn { padding: 14px 20px; font-size: 17px; }
+.mc-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.mc-item { display: grid; grid-template-columns: 70px 1fr auto; gap: 14px; align-items: center; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.08); border: 1px solid var(--line); }
+.mc-votes { font-size: 22px; font-weight: 900; text-align: center; background: rgba(255,255,255,.12); border-radius: 12px; padding: 10px 0; }
+.mc-q { font-size: 19px; font-weight: 600; line-height: 1.35; }
+.mc-meta { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 4px; }
+.mc-item .btn { padding: 12px 18px; font-size: 16px; }
+@media (max-width: 600px) {
+  .mc-item { grid-template-columns: 56px 1fr; }
+  .mc-item .btn { grid-column: 1 / -1; }
+}

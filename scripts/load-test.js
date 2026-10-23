@@ -104,6 +104,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   let P = null; admin.on('state', (s) => { P = s; });
   const act = (a) => new Promise((r) => admin.emit('admin:action', a, r));
   const gotoTimes = {};
+  const idx = (type) => P.slides.findIndex((x) => x.type === type);
   const goto = async (index, settle) => { gotoTimes[index] = Date.now(); await act({ type: 'goto', index }); await wait(settle); };
 
   await act({ type: 'goto', index: 0 });
@@ -111,13 +112,13 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   while (ready < N && Date.now() - t0 < 60000) await wait(200);
   console.log(`  checked in: ${ready}/${N} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
-  phase = 'wordcloud'; await goto(1, 6000);
-  phase = 'vote'; await goto(2, 6000);
+  phase = 'wordcloud'; await goto(idx('wordcloud'), 6000);
+  phase = 'vote'; await goto(idx('poll'), 6000);
   console.log(`  votes counted: ${P.poll?.total}`);
-  phase = 'qa'; await goto(5, 5000);
+  phase = 'qa'; await goto(idx('qa'), 5000);
   for (const q of (A?.questions || []).slice(0, 10)) await act({ type: 'qa:status', qid: q.id, status: 'approved' });
   await wait(4000);
-  phase = 'race-lobby'; await goto(6, 4000);
+  phase = 'race-lobby'; await goto(idx('race'), 4000);
   console.log(`  race players: ${P.race?.playerCount}`);
   phase = 'race'; const rStart = Date.now();
   await act({ type: 'race:start' });
@@ -125,7 +126,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   const raceSecs = (Date.now() - rStart) / 1000;
   console.log(`  race: ${P.race?.phase} in ${raceSecs.toFixed(1)}s (incl. 3.5s countdown), winner: ${P.race?.finishOrder?.[0]?.name}`);
   await wait(1500);
-  phase = 'feedback'; await goto(7, 6000);
+  phase = 'feedback'; await goto(idx('feedback'), 6000);
   clearInterval(sampler);
 
   // ---- report

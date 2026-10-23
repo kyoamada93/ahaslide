@@ -7,7 +7,7 @@
   let renderedSlideId = null;
   let join = { url: '', svg: '' };
 
-  particles($('#fx'), 50);
+  // The branded background image carries the visual; no particle layer on the projector.
 
   // Keep the projector laptop from dimming or sleeping mid-event (needs https or localhost).
   let wakeLock = null;
@@ -22,40 +22,72 @@
     if (adminKey) socket.emit('admin:auth', adminKey, () => {});
   });
 
-  fetch('/api/join').then((r) => r.json()).then((j) => { join = j; $('#miniQr').innerHTML = j.svg; $('#miniUrl').textContent = j.url.replace(/^https?:\/\//, ''); if (S) update(); });
+  fetch('/api/join').then((r) => r.json()).then((j) => {
+    join = j;
+    const host = j.url.replace(/^https?:\/\//, '');
+    $('#miniQr').innerHTML = j.svg; $('#miniUrl').textContent = host;
+    $('#qrOverlayCode').innerHTML = j.svg; $('#qrOverlayUrl').textContent = host;
+    if (S) update();
+  });
 
   // Keyboard: F = fullscreen; arrows / PageUp / PageDown / space (clickers) when ?key= given.
   addEventListener('keydown', (e) => {
     if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); return; }
     if (!adminKey) return;
+    if (e.key === 'q' || e.key === 'Q') { socket.emit('admin:action', { type: 'qr:toggle' }); return; }
     if (['ArrowRight', 'PageDown', ' ', 'ArrowDown'].includes(e.key)) { socket.emit('admin:action', { type: 'next' }); e.preventDefault(); }
     if (['ArrowLeft', 'PageUp', 'ArrowUp'].includes(e.key)) { socket.emit('admin:action', { type: 'prev' }); e.preventDefault(); }
   });
   if (!adminKey) $('#hint').textContent = 'F: toàn màn hình';
-  else $('#hint').textContent = 'F: toàn màn hình · ← → / clicker: chuyển slide';
+  else $('#hint').textContent = 'F: toàn màn hình · ← → / clicker: chuyển slide · Q: QR to';
 
   socket.on('state', (s) => { if (!s.slides) return; // ignore the slim phone state sent before screen:join
     if (s.poll) s.poll.localEnd = s.poll.endsIn ? Date.now() + s.poll.endsIn : 0;
     if (s.race) s.race.localEnd = Date.now() + s.race.countdownLeft; S = s; update(); });
   socket.on('reset', () => location.reload());
 
+  // Slides with their own big QR (or a race in progress) hide the side QR.
+  const OWN_QR = new Set(['checkin', 'feedback', 'race']);
+  const canMorph = typeof document.startViewTransition === 'function';
+  document.documentElement.classList.toggle('no-vt', !canMorph);
+
   function update() {
     const slide = S.slide;
     $('#checkedCount').textContent = S.checkedIn;
-    $('#miniJoin').classList.toggle('hidden', slide.type === 'checkin' || slide.type === 'feedback');
+    $('#qrOverlay').classList.toggle('hidden', !S.bigQr);
     $('#dots').innerHTML = S.slides.map((_, i) => `<span class="${i === S.slideIndex ? 'on' : i < S.slideIndex ? 'done' : ''}"></span>`).join('');
     if (renderedSlideId !== slide.id) {
+      const first = renderedSlideId === null;
       renderedSlideId = slide.id;
-      stopRace();
-      clearTimeout(cloudTimer);
-      if (typeof WordCloud === 'function') WordCloud.stop?.();
-      stage.innerHTML = '';
-      const el = document.createElement('section');
-      el.className = 'slide ' + slide.type;
-      stage.appendChild(el);
-      (builders[slide.type] || builders.unknown)(el, slide);
+      const swap = () => {
+        stopRace();
+        clearTimeout(cloudTimer);
+        if (typeof WordCloud === 'function') WordCloud.stop?.();
+        document.body.classList.toggle('with-join', !OWN_QR.has(slide.type));
+        stage.innerHTML = '';
+        const el = document.createElement('section');
+        el.className = 'slide ' + slide.type;
+        stage.appendChild(el);
+        (builders[slide.type] || builders.unknown)(el, slide);
+        nameMorphTargets(el);
+        (updaters[slide.type] || (() => {}))(el, slide);
+      };
+      // PowerPoint-Morph style: elements sharing a view-transition-name glide between slides.
+      if (canMorph && !first && !document.hidden) document.startViewTransition(swap);
+      else swap();
+      return;
     }
     (updaters[slide.type] || (() => {}))(stage.firstChild, slide);
+  }
+
+  // Shared names = the "same shape" across slides (title, kicker, main panel, QR).
+  function nameMorphTargets(el) {
+    const tag = (node, name) => { if (node) node.style.viewTransitionName = name; };
+    tag(el.querySelector('h1'), 'm-title');
+    tag(el.querySelector('.kicker'), 'm-kicker');
+    tag(el.querySelector('.sub'), 'm-sub');
+    tag(el.querySelector('[data-panel]'), 'm-panel');
+    tag(el.querySelector('.qr-box'), 'm-qr');
   }
 
   const builders = {
@@ -69,19 +101,19 @@
           <div class="muted" style="font-size:24px">người đã check-in</div>
           <div class="names" id="names"></div>
         </div>
-        <div class="qr-card glass">
+        <div class="qr-card glass" data-panel>
           <div class="qr-box" id="bigQr"></div>
           <div class="qr-url" id="bigUrl"></div>
         </div>`;
     },
     wordcloud(el, sl) {
       el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p>
-        <div class="cloud-wrap"><canvas id="cloud"></canvas><div class="empty" id="cloudEmpty">Đang chờ từ khoá đầu tiên… ✨</div><div class="meta" id="cloudMeta"></div></div>`;
+        <div class="cloud-wrap" data-panel><canvas id="cloud"></canvas><div class="empty" id="cloudEmpty">Đang chờ từ khoá đầu tiên… ✨</div><div class="meta" id="cloudMeta"></div></div>`;
       lastCloudKey = '';
     },
     poll(el, sl) {
       el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p><div class="poll-status" id="pollStatus"></div>
-        <div class="poll-box glass" id="poll">${sl.options.map((o, i) => `
+        <div class="poll-box glass" id="poll" data-panel>${sl.options.map((o, i) => `
           <div class="opt" data-i="${i}"><div class="num">${i + 1}</div>
             <div class="bar-wrap"><div class="bar" style="width:0"></div><div class="label">${esc(o)}</div></div>
             <div class="val"><span class="c">0</span><small class="p">0%</small></div></div>`).join('')}</div>`;
@@ -95,20 +127,30 @@
         <div class="topic">${esc(sl.topic || '')}</div>
         <div class="muted" style="font-size:22px">${esc(sl.role || '')}</div>
         <div class="ask glass">💬 Gửi câu hỏi cho ${esc(sl.speaker)} ngay trên điện thoại</div>`;
+      if (!sl.speaker) {
+        // Section slide ("Mục: Food of Thought"): no speaker card, just the heading and agenda.
+        el.classList.add('section');
+        el.innerHTML = `<div class="sec-head"><div class="kicker">${esc(sl.kicker || 'Mục')}</div><h1>${esc(sl.title)}</h1>${sl.topic ? `<p class="sub">${esc(sl.topic)}</p>` : ''}
+          <div class="ask glass">💬 Gửi câu hỏi ngay trên điện thoại</div></div>
+          ${sl.agenda?.length ? `<div class="agenda glass" data-panel>${sl.agenda.map((a, i) => `
+            <div class="ag"><div class="ag-n">${i + 1}</div><div><div class="ag-t">${esc(a.title)}</div>
+              <ul>${(a.items || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`).join('')}</div>` : ''}`;
+        return;
+      }
       if (!sl.agenda?.length) { el.innerHTML = intro; return; }
       el.classList.add('with-agenda');
       el.innerHTML = `<div class="sp-intro">${intro}</div>
-        <div class="agenda glass">${sl.agenda.map((a, i) => `
+        <div class="agenda glass" data-panel>${sl.agenda.map((a, i) => `
           <div class="ag"><div class="ag-n">${i + 1}</div><div><div class="ag-t">${esc(a.title)}</div>
             <ul>${(a.items || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`).join('')}</div>`;
     },
     qa(el, sl) {
       el.innerHTML = `<h1>${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p>
-        <div class="qa-grid"><div class="feature glass" id="qaFeature"></div><div class="list" id="qaList"></div></div>`;
+        <div class="qa-grid"><div class="feature glass" id="qaFeature" data-panel></div><div class="list" id="qaList"></div></div>`;
     },
     race(el, sl) {
       el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>🦆 ${esc(sl.title)}</h1><p class="sub">${esc(sl.subtitle || '')}</p></div></div>
-        <div class="race-stage"><canvas id="river"></canvas>
+        <div class="race-stage" data-panel><canvas id="river"></canvas>
           <div class="timer glass hidden" id="raceTimer"></div>
           <div class="board glass hidden" id="raceBoard"></div>
           <div class="race-map glass hidden" id="raceMap"><span class="flag s">START</span><div class="track"><div class="dots"></div></div><span class="flag f">🏁</span></div>
@@ -126,7 +168,7 @@
             <div class="stat glass"><b id="fbAvg">–</b><span class="stars" id="fbStars"></span><br><span>điểm trung bình</span></div>
           </div>
         </div>
-        <div class="qr-card glass" style="flex:.8;display:flex;flex-direction:column;align-items:center;padding:28px">
+        <div class="qr-card glass" data-panel style="flex:.8;display:flex;flex-direction:column;align-items:center;padding:28px">
           <div style="font-size:26px;font-weight:800;margin-bottom:16px">📝 Quét để đánh giá & góp ý</div>
           <div class="qr-box" id="bigQr"></div>
           <div class="qr-url" id="bigUrl"></div>
@@ -141,6 +183,7 @@
   }
 
   let lastCloudKey = '';
+  const shownQs = new Set();
   let cloudTimer = null;
   const updaters = {
     checkin(el) {
@@ -181,11 +224,15 @@
       const qs = S.questions;
       const feat = qs.find((q) => q.highlighted) || qs.find((q) => q.status === 'approved');
       $('#qaFeature', el).innerHTML = feat
-        ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— Câu hỏi ẩn danh · ▲ ${feat.upvotes}</div>`
+        ? `<div class="kicker">${feat.highlighted ? '🎤 Đang trả lời' : '🔥 Top câu hỏi'}${feat.target ? ' · ' + esc(feat.target) : ''}</div><div class="q">“${esc(feat.text)}”</div><div class="who">— ${feat.name === 'Ẩn danh' ? 'Câu hỏi ẩn danh' : esc(feat.name)} · ▲ ${feat.upvotes}</div>`
         : `<div class="q" style="opacity:.7">Chưa có câu hỏi nào được duyệt.<br>Hãy gửi câu hỏi từ điện thoại nhé! 📱</div>`;
       const rest = qs.filter((q) => q !== feat).slice(0, 7);
-      $('#qaList', el).innerHTML = rest.map((q) => `
-        <div class="item glass ${q.status}"><div><div class="t">${esc(q.text)}</div><div class="by">${q.target ? '→ ' + esc(q.target) : 'Ẩn danh'}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div><div class="votes">▲ ${q.upvotes}</div></div>`).join('');
+      // Only questions that just appeared get the pop-in; upvote updates must not replay it.
+      const html = rest.map((q) => `
+        <div class="item glass ${q.status} ${shownQs.has(q.id) ? '' : 'new'}"><div><div class="t">${esc(q.text)}</div><div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''}${q.status === 'answered' ? ' · ✅ đã trả lời' : ''}</div></div><div class="votes">▲ ${q.upvotes}</div></div>`).join('');
+      const list = $('#qaList', el);
+      if (list._html !== html) { list.innerHTML = html; list._html = html; }
+      rest.forEach((q) => shownQs.add(q.id));
     },
     race(el) { raceState(S.race); },
     feedback(el) {
@@ -215,18 +262,25 @@
     canvas.width = r.width * dpr; canvas.height = r.height * dpr;
     const max = words[0].count;
     const area = canvas.width * canvas.height;
-    const base = Math.sqrt(area / Math.max(12, words.length * 2.2));
-    const palette = ['#ffffff', '#ffd6ec', '#ff6fb5', '#ffa8d5', '#ffe066', '#fcc2d7', '#e599f7'];
-    // Weights are font sizes in px; wordcloud2's shrinkToFit scales them down until a word fits.
-    const size = (c) => Math.max(16 * dpr, Math.min(base * 1.1, base * (0.35 + 0.75 * (c / max))));
-    const sizeToCount = new Map();
+    const light = document.body.classList.contains('light');
+    const palette = light ? ['#d82d8b', '#1c64c8', '#6b0a47', '#c2255c', '#862e9c', '#0b7285', '#e8590c'] : ['#ffd6ec', '#ff6fb5', '#ffa8d5', '#ffe066', '#fcc2d7', '#e599f7'];
+    const topColor = light ? '#8a0052' : '#ffffff';
+    // Font sizes in px, scaled so all words together cover ~45% of the canvas
+    // (a word is roughly 0.6·len·size wide and 1·size tall). shrinkToFit handles the rest.
+    const rel = (c) => 0.45 + 0.55 * (c / max);
+    const ink = words.reduce((sum, w) => sum + 0.6 * Math.max(2, w.text.length) * rel(w.count) ** 2, 0);
+    const k = Math.min(canvas.height * 0.28, Math.sqrt((0.45 * area) / ink));
+    const style = new Map(words.map((w, i) => [w.text, {
+      color: i === 0 ? topColor : palette[i % palette.length],
+      weight: w.count >= max * 0.6 ? 900 : 700,
+    }]));
     WordCloud.stop?.();
     WordCloud(canvas, {
-      list: words.map((w) => { const px = size(w.count); sizeToCount.set(w.text, w.count); return [w.text, px]; }),
+      list: words.map((w) => [w.text, Math.max(14 * dpr, k * rel(w.count))]),
       weightFactor: 1, minSize: 6 * dpr,
       fontFamily: '"Be Vietnam Pro", "Segoe UI", sans-serif',
-      fontWeight: (w) => ((sizeToCount.get(w) || 0) >= max * 0.6 ? 900 : 700),
-      color: (w) => { const c = sizeToCount.get(w) || 0; return c === max ? '#ffffff' : palette[(w.length + c) % palette.length]; },
+      fontWeight: (w) => style.get(w)?.weight || 700,
+      color: (w) => style.get(w)?.color || palette[0],
       backgroundColor: 'rgba(0,0,0,0)',
       rotateRatio: 0.15, rotationSteps: 2, gridSize: Math.round(8 * dpr), shrinkToFit: true, drawOutOfBound: false,
       shape: 'ellipse', ellipticity: 0.55,
@@ -283,7 +337,7 @@
       confettiDone = false;
       if (scene) scene.reset();
       ov.innerHTML = `<div class="lobby">
-          <div class="lobby-qr">${join.svg}</div>
+          <div class="lobby-qr qr-box">${join.svg}</div>
           <div class="lobby-txt"><div class="big">${r.playerCount}</div><div class="lbl">chú vịt đã xuống nước 🦆</div>
           <div class="how">📱 Quét QR → bấm <b>“Tham gia đua”</b><br>👆 Khi có hiệu lệnh: <b>tap liên tục</b> để vịt bơi nhanh!</div></div></div>`;
     } else if (r.phase === 'countdown') {
