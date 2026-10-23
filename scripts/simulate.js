@@ -4,7 +4,7 @@ const { io } = require('socket.io-client');
 
 const URL = process.argv[2] || 'http://localhost:3000';
 const N = Number(process.argv[3]) || 30;
-const NAMES = ['Minh', 'Lan', 'Huy', 'Trang', 'Tuấn', 'Ngọc', 'Phúc', 'Vy', 'Khoa', 'Thảo', 'Duy', 'Hà', 'Quân', 'My', 'Long', 'Anh', 'Bảo', 'Chi', 'Đạt', 'Hương'];
+const NAMES = ['minh.nguyen', 'lan.tran', 'huy.le', 'trang.pham', 'tuan.vo', 'ngoc.do', 'phuc.bui', 'vy.dang', 'khoa.ho', 'thao.ngo', 'duy.phan', 'ha.truong', 'quan.ly', 'my.dinh', 'long.vu', 'anh.mai', 'bao.cao', 'chi.lam', 'dat.ta', 'huong.luu'];
 const WORDS = ['GenAI', 'Agentic AI', 'LLM', 'Networking', 'Roadmap', 'Data Platform', 'Fraud', 'Recsys', 'Học hỏi', 'Kết nối', 'MLOps', 'Foundation Model', 'Vui', 'Quà', 'Career path', 'GenAI', 'LLM', 'Agentic AI'];
 const QUESTIONS = ['Roadmap AI của MoMo năm tới là gì?', 'Team mình đang tuyển thêm vị trí nào?', 'Làm sao để đưa model lên production nhanh hơn?', 'Chị chia sẻ thêm về cách đo impact của data project?', 'Anh nghĩ agentic AI sẽ thay đổi cách làm việc thế nào?'];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -13,7 +13,7 @@ for (let i = 0; i < N; i++) {
   setTimeout(() => {
     const s = io(URL, { transports: ['websocket'] });
     const me = { done: new Set(), tapper: null, skill: 3 + Math.random() * 8 };
-    s.on('connect', () => s.emit('checkin', { name: `${pick(NAMES)} ${i + 1}`, team: pick(['Data Platform', 'AI Lab', 'Risk', 'Growth']) }, () => {}));
+    s.on('connect', () => s.emit('checkin', { name: `${pick(NAMES)}.${i + 1}` }, () => {}));
     s.on('me', (m) => { me.duck = m.duck; });
     s.on('state', (st) => {
       const sl = st.slide;

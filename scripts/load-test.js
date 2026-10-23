@@ -36,7 +36,7 @@ if (WORKER) {
       if (bot.uid) { send({ type: 'reconnect' }); s.emit('hello', bot.uid, () => {}); return; }
       if (bot.done.has('in')) return;
       bot.done.add('in');
-      const res = await timed(s, 'checkin', { name: `Load ${n}`, team: 'Team ' + (n % 7) }, 'checkin');
+      const res = await timed(s, 'checkin', { name: `load.${n}` }, 'checkin');
       bot.uid = res?.id;
       send({ type: 'ready' });
     });

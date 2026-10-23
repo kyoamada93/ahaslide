@@ -4,7 +4,7 @@
 
 | # | Slide | Khán giả (điện thoại) | Màn hình chiếu |
 |---|-------|-----------------------|----------------|
-| 1 | **Check-in** | Quét QR → nhập tên, team | QR lớn, số người check-in, tên hiện realtime |
+| 1 | **Check-in** | Quét QR → nhập domain email (VD: nghia.tran) | QR lớn, số người check-in, tên hiện realtime |
 | 2 | **Word cloud** "Bạn mong muốn gì ở Townhall?" | Nhập tối đa 3 từ khoá (lọc từ tục tiếng Việt/Anh) | Word cloud cập nhật trực tiếp |
 | 3 | **Vote chủ đề sharing** (11 topic) | Chọn 1 topic; vote xong thấy **Top 3** | Biểu đồ cột realtime; **đóng vote → tự hiện 🏆 Top 3**; có thể ẩn kết quả đến khi công bố và hẹn giờ tự đóng vote |
 | 4 | **Mục: Food of Thought** | Xem agenda, gửi câu hỏi | Agenda Insight · Highlight · People |

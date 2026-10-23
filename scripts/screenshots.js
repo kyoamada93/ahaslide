@@ -22,8 +22,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await phone.goto('http://localhost:3000/');
   await wait(800);
   await phone.screenshot({ path: path.join(OUT, 'phone-0-checkin-form.png') });
-  await phone.fill('#ciName', 'Nghĩa Trần');
-  await phone.fill('#ciTeam', 'AI Lab');
+  await phone.fill('#ciName', 'nghia.tran');
   await phone.click('[data-act=checkin]');
   await wait(800);
 

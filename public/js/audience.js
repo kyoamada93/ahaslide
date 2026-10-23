@@ -84,11 +84,10 @@
       <div class="card glass">
         <div class="kick">${esc(S.eventSubtitle)}</div>
         <h2>Check-in ${esc(S.eventTitle)}</h2>
-        <p class="muted">Nhập tên để tham gia các hoạt động tương tác nhé!</p>
-        <label for="ciName">Tên của bạn *</label>
-        <input type="text" id="ciName" maxlength="40" autocomplete="name" placeholder="VD: Nguyễn Văn A">
-        <label for="ciTeam">Team / Phòng ban</label>
-        <input type="text" id="ciTeam" maxlength="40" placeholder="VD: Data Platform">
+        <p class="muted">Nhập domain email để tham gia các hoạt động tương tác nhé!</p>
+        <label for="ciName">Domain email *</label>
+        <input type="text" id="ciName" maxlength="60" inputmode="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="VD: nghia.tran">
+        <p class="muted tiny">Phần trước dấu @ trong email công ty.</p>
         <button class="btn block" data-act="checkin">Check-in 🚀</button>
       </div>`,
 
@@ -232,13 +231,17 @@
     if (b && !b.disabled) act(b.dataset.act, b);
   });
 
+  // "Nghia.Tran@mservice.com.vn " → "nghia.tran"
+  const emailDomain = (v) => String(v || '').trim().toLowerCase().replace(/@.*$/, '').replace(/\s+/g, '');
+  const validDomain = (v) => /^[a-z0-9][a-z0-9._-]{1,39}$/.test(v);
+
   async function act(type, el) {
     let res;
     switch (type) {
       case 'checkin': {
-        const name = $('#ciName').value.trim();
-        if (name.length < 2) return toast('Vui lòng nhập tên của bạn');
-        res = await emit('checkin', { name, team: $('#ciTeam').value });
+        const name = emailDomain($('#ciName').value);
+        if (!validDomain(name)) return toast('Nhập domain email, VD: nghia.tran');
+        res = await emit('checkin', { name });
         if (res.ok) { uid = res.id; try { localStorage.setItem(LS_KEY, uid); } catch {} toast('Check-in thành công 🎉'); }
         break;
       }

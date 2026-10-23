@@ -394,7 +394,7 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
   const userName = (id) => state.users[id]?.name || '';
   switch (req.params.what) {
     case 'checkins':
-      return sendCsv(res, 'checkins', ['name', 'team', 'checked_in_at'], Object.values(state.users).map((u) => [u.name, u.team, t(u.checkedInAt)]));
+      return sendCsv(res, 'checkins', ['email_domain', 'checked_in_at'], Object.values(state.users).map((u) => [u.name, t(u.checkedInAt)]));
     case 'words':
       return sendCsv(res, 'wordcloud', ['slide', 'name', 'word'], Object.entries(state.words).flatMap(([sid, m]) => Object.entries(m).flatMap(([uid, ws]) => ws.map((w) => [sid, userName(uid), w]))));
     case 'votes': {
@@ -605,10 +605,11 @@ io.on('connection', (socket) => {
 
   socket.on('checkin', (data, cb) => {
     if (limited(socket, 3)) return ack(cb, { ok: false, error: 'Thử lại sau giây lát' });
-    const name = clean(data?.name, 40);
-    if (name.length < 2) return ack(cb, { ok: false, error: 'Vui lòng nhập tên' });
+    // name is the email domain (the part before @), e.g. "nghia.tran"
+    const name = String(data?.name || '').trim().toLowerCase().replace(/@.*$/, '').replace(/\s+/g, '');
+    if (!/^[a-z0-9][a-z0-9._-]{1,39}$/.test(name)) return ack(cb, { ok: false, error: 'Nhập domain email, VD: nghia.tran' });
     const id = userId && state.users[userId] ? userId : newId();
-    state.users[id] = { id, name, team: clean(data?.team, 40), checkedInAt: state.users[id]?.checkedInAt || Date.now() };
+    state.users[id] = { id, name, checkedInAt: state.users[id]?.checkedInAt || Date.now() };
     userId = id;
     socket.join('u:' + id);
     ack(cb, { ok: true, id });

@@ -65,7 +65,7 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     for (let i = 0; i < 25; i++) {
       const s = await connect();
       assert.equal((await call(s, 'checkin', { name: 'x' })).ok, false, 'short name rejected');
-      const r = await call(s, 'checkin', { name: `User ${i}`, team: 'Team ' + (i % 3) });
+      const r = await call(s, 'checkin', { name: `User.${i}@mservice.com.vn` });
       assert.ok(r.ok); s.uid = r.id; users.push(s);
     }
     await wait(300);
@@ -247,8 +247,8 @@ const call = (s, ev, ...args) => new Promise((r) => s.emit(ev, ...args, r));
     for (let i = 0; i < 300 && pub.race.phase !== 'finished'; i++) await wait(100);
     clearInterval(tappers);
     assert.equal(pub.race.phase, 'finished', 'race finished');
-    assert.equal(pub.race.finishOrder[0].name, 'User 0', 'fastest tapper wins');
-    assert.equal(pub.race.finishOrder.at(-1).name, 'User 9', 'idle duck last');
+    assert.equal(pub.race.finishOrder[0].name, 'user.0', 'fastest tapper wins');
+    assert.equal(pub.race.finishOrder.at(-1).name, 'user.9', 'idle duck last');
     await act({ type: 'race:rematch' });
     assert.equal(pub.race.phase, 'lobby');
     assert.equal(pub.race.playerCount, 10, 'rematch keeps players');
