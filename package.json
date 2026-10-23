@@ -21,6 +21,7 @@
     "wordcloud": "^1.2.3"
   },
   "devDependencies": {
+    "https-proxy-agent": "^7.0.6",
     "socket.io-client": "^4.8.4"
   }
 }

@@ -6,7 +6,13 @@ const { fork, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { io } = require('socket.io-client');
+const { io: rawIo } = require('socket.io-client');
+
+// Behind an HTTP(S) proxy (e.g. a sandbox), socket.io-client needs an explicit agent.
+const PROXY = process.env.LOADTEST_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
+let proxyAgent = null;
+if (PROXY) { try { const { HttpsProxyAgent } = require('https-proxy-agent'); proxyAgent = new HttpsProxyAgent(PROXY); } catch {} }
+const io = (url, opts = {}) => rawIo(url, proxyAgent && url.startsWith('https') ? { ...opts, agent: proxyAgent } : opts);
 
 const WORKER = process.argv[2] === '--worker';
 
@@ -22,12 +28,16 @@ if (WORKER) {
   for (let i = 0; i < Number(count); i++) {
     const n = Number(from) + i;
     const s = io(url, { transports: ['websocket'], forceNew: true, reconnection: true });
+    s.on('disconnect', (why) => send({ type: 'disconnect', why }));
     const bot = { s, n, slide: -1, done: new Set(), tapper: null, raceMe: 0 };
     bots.push(bot);
     s.on('connect', async () => {
+      // Like the real phone: after a reconnect, re-identify with the saved user id.
+      if (bot.uid) { send({ type: 'reconnect' }); s.emit('hello', bot.uid, () => {}); return; }
       if (bot.done.has('in')) return;
       bot.done.add('in');
-      await timed(s, 'checkin', { name: `Load ${n}`, team: 'Team ' + (n % 7) }, 'checkin');
+      const res = await timed(s, 'checkin', { name: `Load ${n}`, team: 'Team ' + (n % 7) }, 'checkin');
+      bot.uid = res?.id;
       send({ type: 'ready' });
     });
     s.on('race:me', () => { bot.raceMe++; });
@@ -75,6 +85,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   console.log(`Load test: ${N} users → ${URL}`);
 
   const lat = {}; const slideSeen = {}; let ready = 0; const raceMe = [];
+  let reconnects = 0; const disconnects = {};
   const WORKERS = Math.min(4, Math.ceil(N / 100));
   const workers = [];
   for (let w = 0; w < WORKERS; w++) {
@@ -85,6 +96,8 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
       if (m.type === 'ready') ready++;
       if (m.type === 'slide') (slideSeen[m.idx] ||= []).push(m.t);
       if (m.type === 'raceMe') raceMe.push(m.n);
+      if (m.type === 'reconnect') reconnects++;
+      if (m.type === 'disconnect') disconnects[m.why] = (disconnects[m.why] || 0) + 1;
     });
     workers.push(child);
   }
@@ -118,6 +131,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   phase = 'qa'; await goto(idx('qa'), 5000);
   for (const q of (A?.questions || []).slice(0, 10)) await act({ type: 'qa:status', qid: q.id, status: 'approved' });
   await wait(4000);
+  await act({ type: 'race:reset' }); // fresh lobby even if an earlier run left a finished race
   phase = 'race-lobby'; await goto(idx('race'), 4000);
   console.log(`  race players: ${P.race?.playerCount}`);
   phase = 'race'; const rStart = Date.now();
@@ -138,6 +152,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const a = [...arr].sort((x,
   }
   console.log('\n  Action round-trip (emit → ack)');
   for (const [k, v] of Object.entries(lat)) console.log(`    ${k.padEnd(10)} n=${String(v.ms.length).padEnd(4)} p50 ${pct(v.ms, 50)}ms  p95 ${pct(v.ms, 95)}ms  max ${Math.max(...v.ms)}ms  failed ${v.fail}`);
+  console.log(`\n  Disconnects during the run: ${JSON.stringify(disconnects)} · reconnected and re-identified: ${reconnects}`);
   if (raceMe.length) console.log(`\n  Phone race updates: avg ${(raceMe.reduce((a, b) => a + b, 0) / raceMe.length).toFixed(0)} per phone during the race`);
   console.log('\n  Server CPU by phase (% of one core: avg / peak)');
   for (const ph of [...new Set(samples.map((x) => x.phase))]) {
