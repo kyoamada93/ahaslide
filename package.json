@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "simulate": "node scripts/simulate.js",
-    "test": "node scripts/smoke-test.js && node scripts/composio-test.js",
+    "test": "node scripts/smoke-test.js && node scripts/composio-test.js && node scripts/categorize-test.js",
     "load-test": "node scripts/load-test.js 300"
   },
   "engines": {

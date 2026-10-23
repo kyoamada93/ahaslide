@@ -284,8 +284,17 @@
       <div class="row"><button class="btn small ok" data-a="event-save">💾 Lưu</button><button class="btn small ghost" data-a="event-revert">↺ Gốc</button></div>`;
   }
 
+  const CATS = { fun: '😄 Vui vẻ', okr: '🎯 OKR & định hướng', hard: '🔥 Lương & resource' };
+  document.addEventListener('change', (e) => {
+    const sel = e.target.closest('select[data-cat]');
+    if (!sel) return;
+    sel.blur();
+    action({ type: 'qa:category', qid: sel.dataset.cat, category: sel.value });
+  });
+
   function renderQa() {
     if (!A) return;
+    if (document.activeElement?.matches('select[data-cat]')) return; // keep an open dropdown open
     const counts = { pending: 0, approved: 0, answered: 0, rejected: 0 };
     A.questions.forEach((q) => { counts[q.status] += 1; });
     const labels = { pending: '⏳ Chờ duyệt', approved: '✅ Đã duyệt', answered: '💬 Đã trả lời', rejected: '🚫 Từ chối' };
@@ -297,7 +306,8 @@
       <div class="qa-item ${q.highlighted ? 'hl' : ''} ${q.flagged ? 'flag' : ''}">
         ${q.flagged ? '<div class="flag-note">⚠️ Có thể chứa từ ngữ không phù hợp — kiểm tra trước khi duyệt</div>' : ''}
         <div class="t">${esc(q.text)}</div>
-        <div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div class="by">${esc(q.name)}${q.target ? ' → ' + esc(q.target) : ''} · ▲ ${q.upvotes} · ${new Date(q.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          <select class="cat-sel cat-${q.category}" data-cat="${q.id}" title="Nhóm câu hỏi (tự phân loại, có thể đổi)">${Object.entries(CATS).map(([k, l]) => `<option value="${k}" ${q.category === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="row">
           ${q.status !== 'approved' ? `<button class="btn small ok" data-a="qa" data-s="approved" data-id="${q.id}">✅ Approve</button>` : ''}
           ${q.status === 'approved' ? `<button class="btn small warn" data-a="qa-hl" data-id="${q.id}">${q.highlighted ? '⭐ Bỏ highlight' : '⭐ Highlight'}</button>` : ''}

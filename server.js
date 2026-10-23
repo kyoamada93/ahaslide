@@ -21,12 +21,13 @@ const { hasProfanity } = require('./profanity');
 const sheetSync = require('./sheet-sync');
 const googleAuth = require('./google-auth');
 const composio = require('./composio');
+const { CATEGORIES, categorize } = require('./categorize');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_KEY = process.env.ADMIN_KEY || 'momo-aidata';
 // Optional separate key for the MC page: it can only pick/answer Q&A questions.
 const MC_KEY = process.env.MC_KEY || '';
-const MC_ACTIONS = new Set(['qa:highlight', 'qa:status', 'qa:next', 'goto']);
+const MC_ACTIONS = new Set(['qa:highlight', 'qa:status', 'qa:next', 'qa:category', 'goto', 'timer:program']);
 // Persistent volume on Railway is exposed as RAILWAY_VOLUME_MOUNT_PATH (e.g. /data); without one,
 // data lives in the container and is lost on every redeploy.
 const DATA_DIR = process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
@@ -63,6 +64,8 @@ function freshState() {
     sheet: { url: '', auto: false, approve: false, lastAt: 0, lastMsg: '' }, // Google Sheet → Q&A import
     google: null, // { refreshToken, accessToken, expiresAt, email } — server-side only, never sent to clients
     feedback: {}, // userId -> {...}
+    slideStartedAt: 0, // when the current slide went up (MC timers)
+    programStartedAt: 0, // MC "Chương trình" clock; starts when leaving the check-in slide or by the MC
   };
 }
 function freshRace() {
@@ -197,6 +200,9 @@ function publicQuestion(q) {
   return {
     id: q.id, name: q.name, text: q.text, target: q.target, status: q.status,
     highlighted: q.highlighted, upvotes: q.upvotes.length, createdAt: q.createdAt, flagged: !!q.flagged,
+    // auto topic unless the moderator/MC picked one
+    category: CATEGORIES[q.category] ? q.category : categorize(q.text),
+    highlightedAt: q.highlighted ? q.highlightedAt || 0 : 0, answerMs: q.answerMs || 0,
   };
 }
 
@@ -249,6 +255,7 @@ function publicState() {
     eventSubtitle: config.eventSubtitle,
     qaTargets: config.qaTargets,
     rev: content.rev,
+    now: Date.now(), slideStartedAt: state.slideStartedAt, programStartedAt: state.programStartedAt,
     slideIndex: state.slideIndex,
     slideCount: slides.length,
     slides: slides.map((s) => ({ id: s.id, type: s.type, title: s.title, speaker: s.speaker })),
@@ -461,7 +468,8 @@ app.get('/api/export/:what', requireAdmin, (req, res) => {
       return sendCsv(res, 'votes', ['slide', 'option', 'votes'], rows);
     }
     case 'questions':
-      return sendCsv(res, 'questions', ['target', 'question', 'status', 'upvotes', 'created_at'], state.questions.map((q) => [q.target, q.text, q.status, q.upvotes.length, t(q.createdAt)]));
+      return sendCsv(res, 'questions', ['target', 'question', 'category', 'status', 'upvotes', 'answer_seconds', 'created_at'],
+        state.questions.map((q) => { const p = publicQuestion(q); return [q.target, q.text, CATEGORIES[p.category].label, q.status, q.upvotes.length, Math.round((q.answerMs || 0) / 1000), t(q.createdAt)]; }));
     case 'feedback':
       return sendCsv(res, 'feedback', ['name', 'overall', 'content', 'organization', 'liked', 'suggestion', 'next_topics', 'at'], Object.values(state.feedback).map((f) => [f.anonymous ? '' : f.name, f.overall, f.content, f.organization, f.liked, f.suggestion, f.nextTopics, t(f.at)]));
     case 'race':
@@ -787,6 +795,9 @@ io.on('connection', (socket) => {
       && (a.type !== 'goto' || slides[a.index]?.type === 'qa');
     if (!isAdmin && !mcAllowed) return ack(cb, { ok: false, error: 'unauthorized' });
     const q = a.qid && state.questions.find((x) => x.id === a.qid);
+    const prevSlide = state.slideIndex;
+    // Time on the question being answered, shown on the MC page and kept for the answered list.
+    const finishAnswer = (x) => { if (x.highlighted && x.highlightedAt) x.answerMs = (x.answerMs || 0) + Date.now() - x.highlightedAt; x.highlighted = false; };
     switch (a.type) {
       case 'goto':
         if (Number.isInteger(a.index) && a.index >= 0 && a.index < slides.length) state.slideIndex = a.index;
@@ -795,6 +806,7 @@ io.on('connection', (socket) => {
       case 'prev': state.slideIndex = Math.max(0, state.slideIndex - 1); break;
       case 'qa:status':
         if (q && ['pending', 'approved', 'rejected', 'answered'].includes(a.status)) {
+          if (a.status === 'answered') finishAnswer(q);
           q.status = a.status;
           if (a.status !== 'approved') q.highlighted = false;
           if (q.userId) pushMe(q.userId);
@@ -805,19 +817,25 @@ io.on('connection', (socket) => {
           const on = !q.highlighted;
           state.questions.forEach((x) => { x.highlighted = false; });
           q.highlighted = on;
-          if (on) q.status = 'approved';
+          if (on) { q.status = 'approved'; q.highlightedAt = Date.now(); }
         }
         break;
       case 'qa:next': {
         // Mark the question on screen as answered and put the next top question up.
         const cur = state.questions.find((x) => x.highlighted);
-        if (cur) { cur.highlighted = false; cur.status = 'answered'; }
+        if (cur) { finishAnswer(cur); cur.status = 'answered'; }
         const next = state.questions
           .filter((x) => x.status === 'approved')
           .sort((x, y) => y.upvotes.length - x.upvotes.length || x.createdAt - y.createdAt)[0];
-        if (next) next.highlighted = true;
+        if (next) { next.highlighted = true; next.highlightedAt = Date.now(); }
         break;
       }
+      case 'qa:category':
+        if (q && (CATEGORIES[a.category] || a.category === '')) q.category = a.category || undefined; // '' = back to auto
+        break;
+      case 'timer:program':
+        state.programStartedAt = a.reset ? 0 : Date.now();
+        break;
       case 'qa:add': {
         // Organisers can seed questions; they go straight to the live queue.
         const t = clean(a.text, 1000);
@@ -917,8 +935,12 @@ io.on('connection', (socket) => {
       default:
         return ack(cb, { ok: false, error: 'unknown action' });
     }
+    if (state.slideIndex !== prevSlide) {
+      state.slideStartedAt = Date.now();
+      if (prevSlide === 0 && !state.programStartedAt) state.programStartedAt = Date.now();
+    }
     ack(cb, { ok: true });
-    broadcast(['content:save', 'content:revert', 'goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle', 'poll:view'].includes(a.type));
+    broadcast(['qa:category', 'timer:program', 'content:save', 'content:revert', 'goto', 'next', 'prev', 'race:start', 'race:reset', 'race:rematch', 'reset:all', 'poll:toggle', 'poll:reveal', 'poll:timer', 'qa:highlight', 'qa:next', 'qr:toggle', 'poll:view'].includes(a.type));
   });
 
   socket.on('disconnect', () => rate.delete(socket.id));

@@ -143,6 +143,12 @@ Muốn thêm/bớt slide hoặc đổi cấu hình khác thì sửa `config.json
 - Đua vịt: `finishTaps` (số tap để về đích, mặc định 160 ≈ 15–20 giây), `maxTapsPerSecond` (chống auto-click), `maxDurationSec`, `podium`.
 - `qaTargets`: danh sách người nhận câu hỏi.
 
+### Trang MC (`/mc`)
+
+- **Đồng hồ:** giờ hiện tại · ⏱ chương trình (tự chạy khi rời slide check-in, MC bấm ↺ để tính lại) · 📺 thời gian slide hiện tại · 🎤 thời gian câu đang trả lời (vàng sau 3 phút, đỏ sau 5 phút).
+- **Nhóm câu hỏi** tự phân loại: 😄 Vui vẻ · 🎯 OKR & định hướng · 🔥 Lương & resource. MC/moderator đổi nhóm bằng ô chọn cạnh mỗi câu; lọc theo nhóm ở trang MC. File CSV `questions` có thêm cột nhóm và thời gian trả lời.
+- **Kịch bản MC** theo slide đang chiếu, kèm câu dẫn và lưu ý cho từng nhóm câu hỏi. Sửa kịch bản trong `public/js/mc-script.js`.
+
 ### Logo & background
 
 **Cách nhanh nhất:** trang admin → mục **Logo & background** → *Tải lên* logo AI & Data, ảnh nền 16:9 (màn chiếu) và 9:16 (điện thoại). Ảnh được lưu trong `DATA_DIR/brand/` và áp dụng ngay cho mọi màn hình đang mở; nút *Mặc định* để quay về ảnh có sẵn.
