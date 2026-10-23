@@ -1,18 +1,43 @@
 'use strict';
 // Read the Q&A sheet through Composio (composio.dev), which holds the Google OAuth connection for us:
 //   COMPOSIO_API_KEY              project API key (x-api-key)
-//   COMPOSIO_CONNECTED_ACCOUNT_ID the Google Sheets connected account (ca_…), e.g. from `composio link googlesheets`
+//   COMPOSIO_CONNECTED_ACCOUNT_ID optional: the Google Sheets connected account id. When empty, the first
+//                                 ACTIVE googlesheets account in the project is looked up automatically.
 //   COMPOSIO_SHEET_TAB            optional tab name (default: Form_Responses, else the first tab)
 const BASE = process.env.COMPOSIO_BASE_URL || 'https://backend.composio.dev/api/v3.1';
 const API_KEY = process.env.COMPOSIO_API_KEY || '';
-const ACCOUNT = process.env.COMPOSIO_CONNECTED_ACCOUNT_ID || '';
+let account = process.env.COMPOSIO_CONNECTED_ACCOUNT_ID || '';
 const USER_ID = process.env.COMPOSIO_USER_ID || '';
 const TAB = process.env.COMPOSIO_SHEET_TAB || '';
 
-const configured = () => !!(API_KEY && ACCOUNT);
+const configured = () => !!API_KEY;
+
+async function getJson(url) {
+  const res = await fetch(url, { headers: { 'x-api-key': API_KEY }, signal: AbortSignal.timeout(15000) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Composio ${res.status}: ${json.error?.message || json.message || 'request failed'}`);
+  return json;
+}
+
+// The project's active Google Sheets connection (so nobody has to copy its id by hand).
+async function resolveAccount() {
+  if (account) return account;
+  const q = 'connected_accounts?toolkit_slugs=googlesheets&statuses=ACTIVE&limit=50';
+  let json;
+  try { json = await getJson(`${BASE}/${q}`); } catch (e) {
+    // some deployments only expose the listing under /api/v3
+    if (!/\/v3\.1$/.test(BASE)) throw e;
+    json = await getJson(`${BASE.replace(/\/v3\.1$/, '/v3')}/${q}`);
+  }
+  const items = (json.items || json.data || []).filter((a) => !a.status || a.status === 'ACTIVE');
+  if (!items.length) throw new Error('Composio: chưa có tài khoản Google Sheets nào đang kết nối trong project này — vào dashboard Composio → Google Sheets → Connect account');
+  items.sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
+  account = items[0].id;
+  return account;
+}
 
 async function execute(slug, args) {
-  const body = { connected_account_id: ACCOUNT, arguments: args };
+  const body = { connected_account_id: await resolveAccount(), arguments: args };
   if (USER_ID) body.user_id = USER_ID;
   const res = await fetch(`${BASE}/tools/execute/${slug}`, {
     method: 'POST',
@@ -61,4 +86,6 @@ async function readRows(link) {
   return rows.map((r) => r.map((c) => (c == null ? '' : String(c))));
 }
 
-module.exports = { configured, readRows };
+const accountId = () => account;
+
+module.exports = { configured, readRows, accountId };

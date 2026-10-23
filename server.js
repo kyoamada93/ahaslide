@@ -220,7 +220,7 @@ function adminState() {
     feedbackList: Object.values(state.feedback).sort((a, b) => b.at - a.at).slice(0, 200),
     online: io.engine.clientsCount,
     sheet: { ...state.sheet, url: state.sheet.url || config.qaSheetUrl || '' },
-    google: { configured: googleAuth.configured(), connected: !!state.google, email: state.google?.email || '', composio: composio.configured() },
+    google: { configured: googleAuth.configured(), connected: !!state.google, email: state.google?.email || '', composio: composio.configured(), composioAccount: composio.accountId() },
   };
 }
 

@@ -95,9 +95,9 @@ Cột được nhận theo tiêu đề: "Câu hỏi…" là nội dung, "Timesta
 Composio giữ sẵn kết nối Google; server chỉ gọi API của Composio (`GOOGLESHEETS_GET_SHEET_NAMES`, `GOOGLESHEETS_BATCH_GET`).
 
 1. Đăng ký https://platform.composio.dev → tạo project → **Settings → API Keys** → copy key.
-2. Kết nối Google Sheets **trong cùng project đó**: Dashboard → *Auth Configs / Toolkits* → **Google Sheets** (Composio managed auth) → *Connect account* → đăng nhập Google bằng tài khoản xem được sheet → copy **Connected account ID** (`ca_…`).
+2. Kết nối Google Sheets **trong cùng project đó**: Dashboard → *Auth Configs / Toolkits* → **Google Sheets** (Composio managed auth) → *Connect account* → đăng nhập Google bằng tài khoản xem được sheet.
    Hoặc trên máy của bạn: `curl -fsSL https://composio.dev/install | sh` → `composio login` → `composio link googlesheets`.
-3. Railway → **Variables**: `COMPOSIO_API_KEY`, `COMPOSIO_CONNECTED_ACCOUNT_ID` (tuỳ chọn `COMPOSIO_SHEET_TAB=Form_Responses`).
+3. Railway → **Variables**: `COMPOSIO_API_KEY`. Server tự tìm tài khoản Google Sheets đang kết nối trong project (không cần copy ID). Tuỳ chọn: `COMPOSIO_CONNECTED_ACCOUNT_ID` để chỉ định đúng một tài khoản, `COMPOSIO_SHEET_TAB=Form_Responses`.
 4. Admin → khung Google Sheet hiện **🧩 Đọc sheet qua Composio** → **🔄 Đồng bộ ngay**.
 
 Thứ tự nguồn khi đồng bộ: đăng nhập Google trực tiếp (nếu có) → Composio (nếu có cấu hình) → link CSV công khai.
